@@ -12,7 +12,7 @@ RAG fundamentals: combine LLM with knowledge base
 
 Tested [chromadb](https://docs.trychroma.com/) and [elasticsearch](https://www.elastic.co/)
 
-Install elasticsearch from [here](https://www.elastic.co/downloads/elasticsearch)
+Install elasticsearch from [here](https://www.elastic.co/downloads/elasticsearch). Or use docker.
 
 Install chromadb as documented [here](https://docs.trychroma.com/getting-started)
 
@@ -54,8 +54,10 @@ Would also like to test [*LLäMmlein*](https://arxiv.org/abs/2411.11171) from [U
 
 #### Examples
 
+*Using elasticsearch*
+
 massnahmen zum klimaschutz
-> (rag) kugel@tux3:~/temp/okl/ka-rat$ python ragElasticOpenai.py  
+> (rag) rag@ragtest:~/temp/okl/ka-rat$ python ragElasticOpenai.py  
 Connected to ES! 
 🔍 Enter your query:  massnahmen zum klimaschutz  
 Die Klimaschutzmaßnahmen umfassen:  
@@ -74,7 +76,7 @@ Die Klimaschutzmaßnahmen umfassen:
 
 
 fahrtkosten zur schülerbeförderung   
-> (rag) kugel@tux3:~/temp/okl/ka-rat$ python ragElasticOpenai.py   
+> (rag) rag@ragtest:~/temp/okl/ka-rat$ python ragElasticOpenai.py   
 Connected to ES!   
 🔍 Enter your query: fahrtkosten zur schülerbeförderung   
 Die aktuellen Fahrtkosten für die Schülerbeförderung zu Grundschulförderklassen werden im Kontext der Anfrage kritisch betrachtet. Der geplante Wegfall der kostenlosen Beförderung („freigestellter Schülerverkehr“) würde bedeuten, dass Eltern ihre Kinder selbst transportieren müssen. Dies könnte zusätzliche finanzielle Belastungen verursachen, insbesondere für berufstätige Eltern. Zudem müssten möglicherweise alternative Lösungen wie verlängerte Kita-Betreuung oder zusätzliche Zuschüsse eingeführt werden, um die Bildungschancen der betroffenen Kinder zu sichern. Die Stadtverwaltung bewertet die Kosten-Nutzen-Aspekte und deren Auswirkungen auf die betroffenen Familien und Bildungseinrichtungen.   
@@ -83,7 +85,7 @@ Die aktuellen Fahrtkosten für die Schülerbeförderung zu Grundschulförderklas
 [{'filename': '2024-termin-9531-top28-link1.json', 'indexdate': '2024-12-14T16:22:13.880498', 'dcterms:modified': '2024-09-12T11:38:35Z', 'dc:language': 'de-DE'}, {'filename': '2024-termin-9528-top27-link1.json', 'indexdate': '2024-12-14T16:21:00.291752', 'dcterms:modified': '2024-07-03T11:41:57Z', 'dc:language': 'de-DE'}, {'filename': '2024-termin-9827-top2-link1.json', 'indexdate': '2024-12-14T16:18:45.329838', 'dcterms:modified': '2024-04-30T11:22:58Z', 'dc:language': 'de-DE'}]
 
 erinnerungswege palmbach  
-> (rag) kugel@tux3:~/temp/okl/ka-rat$ python ragElasticOpenai.py   
+> (rag) rag@ragtest:~/temp/okl/ka-rat$ python ragElasticOpenai.py   
 Connected to ES!   
 🔍 Enter your query: erinnerungswege palmbach   
 Die Erinnerungswege in Palmbach sind Gedenkpfade, die historische Ereignisse oder Persönlichkeiten würdigen. Sie sind mit speziellen Blindenleitsystemen ausgestattet, um Barrierefreiheit zu gewährleisten. Im Rahmen des Jahresbauprogramms 2024 plant die Stadt Karlsruhe möglicherweise Renovierungen oder Erweiterungen dieser Wege, einschließlich verbesserter Pflasterungen und Grünflächen. Änderungen am Kantstein und an der Rinnenführung könnten ebenfalls vorgesehen sein, um die Wege an die städtischen Infrastrukturprojekte anzupassen. Für detaillierte Informationen empfiehlt sich eine Kontaktaufnahme mit dem Tiefbauamt oder dem Baustellenmanagement der Stadt Karlsruhe.   
@@ -92,7 +94,7 @@ Die Erinnerungswege in Palmbach sind Gedenkpfade, die historische Ereignisse ode
 [{'filename': '2024-termin-9531-top23-link4.json', 'indexdate': '2024-12-14T16:15:16.314280', 'dcterms:modified': '2024-06-07T15:26:48Z', 'dc:language': 'de-DE'}, {'filename': '2024-termin-9552-top2-link3.json', 'indexdate': '2024-12-14T16:15:27.478850', 'dcterms:modified': '2024-09-06T09:48:45Z'}, {'filename': '2024-termin-9524-top20-link5.json', 'indexdate': '2024-12-14T16:15:35.473790', 'dcterms:modified': '2024-05-14T16:12:18Z'}]
 
 probleme mit wertstoffsammlung 
-> (rag) kugel@tux3:~/temp/okl/ka-rat$ python ragElasticOpenai.py   
+> (rag) rag@ragtest:~/temp/okl/ka-rat$ python ragElasticOpenai.py   
 Connected to ES!   
 🔍 Enter your query: probleme mit wertstoffsammlung   
 In Karlsruhe gibt es erhebliche Probleme mit der Wertstoffsammlung:   
