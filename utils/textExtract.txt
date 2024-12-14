@@ -1,0 +1,33 @@
+pdftotext or 
+apache tika
+java -jar tika-app-2.6.0.jar -i ~/temp/okl/ka-rat/out/ -o ~/temp/okl/ka-rat/tika/  -numConsumers 8 -J -t
+
+
+suggested tika version
+
+from tika import parser
+
+# Path to the PDF file
+pdf_path = '/home/kugel/temp/okl/ka-rat/out/2019-termin-5404-top8-link4.pdf'
+
+# Parse the PDF file
+parsed = parser.from_file(pdf_path)
+
+# Extract text content
+text_content = parsed['content']
+
+# Save the extracted text to a file
+with open('/home/kugel/temp/okl/ka-rat/tika/extracted_text.txt', 'w') as file:
+    file.write(text_content)
+
+
+images:
+pdfimages -p -all out/2019-termin-5404-top8-link4.pdf imgs/
+
+option --list doesn_t save
+
+
+
+check plugins for images
+grep -l "Image Conversion Plug-in" tika/*
+

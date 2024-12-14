@@ -1,0 +1,149 @@
+processing, see 
+https://python.plainenglish.io/creating-a-custom-corpus-928789c089e7
+
+
+
+risbase =  https://web1.karlsruhe.de/ris/ ... 
+https://web1.karlsruhe.de/ris/oparl/bodies/0001/downloadfiles/00641317.pdf
+
+eventBase = https://sitzungskalender.karlsruhe.de/db/ratsinformation/
+event like https://sitzungskalender.karlsruhe.de/db/ratsinformation/termin-6600
+event
+<a id="top2"></a>
+<strong class="summary-title">
+                        2 - Umbesetzung von Ausschüssen und sonstigen Gremien nach dem Ausscheiden von Stadträtin Karin Wiedemann aus dem Gemeinderat
+                        <a href="#top2" title="Direkter Link" class="anchor">#</a><span class="glyphicon glyphicon-info-sign"
+                                                                                 title="Aufklappen für Details"
+                                                                                 aria-hidden="true"></span></strong>
+
+<p> Öffentlich, Entscheidung 
+</p>
+<p>Vorlage: 2022/0820</p>
+<li class="col-md-6 col-xl-6"><a href="https://web1.karlsruhe.de/ris/oparl/bodies/0001/downloadfiles/00641320.pdf" class="download-link">Abstimmungsergebnis TOP 3</a></li>
+
+
+search form
+
+POST https://sitzungskalender.karlsruhe.de/db/ratsinformation/suche
+[HTTP/1.1 200 OK 1375ms]
+
+1
+
+-----------------------------27625068331570211112520591867
+
+2
+
+Content-Disposition: form-data; name="searchstr"
+
+3
+
+​
+
+4
+
+platanen
+
+5
+
+-----------------------------27625068331570211112520591867
+
+6
+
+Content-Disposition: form-data; name="von"
+
+7
+
+​
+
+8
+
+​
+
+9
+
+-----------------------------27625068331570211112520591867
+
+10
+
+Content-Disposition: form-data; name="bis"
+
+11
+
+​
+
+12
+
+​
+
+13
+
+-----------------------------27625068331570211112520591867
+
+14
+
+Content-Disposition: form-data; name="bereich"
+
+15
+
+​
+
+16
+
+fi
+
+17
+
+-----------------------------27625068331570211112520591867
+
+18
+
+Content-Disposition: form-data; name="bereich"
+
+19
+
+​
+
+20
+
+vo
+
+21
+
+-----------------------------27625068331570211112520591867
+
+22
+
+Content-Disposition: form-data; name="bereich"
+
+23
+
+​
+
+24
+
+me
+
+25
+
+-----------------------------27625068331570211112520591867
+
+26
+
+Content-Disposition: form-data; name="bereich"
+
+27
+
+​
+
+28
+
+pe
+
+29
+
+-----------------------------27625068331570211112520591867--
+
+30
+
+​
+
