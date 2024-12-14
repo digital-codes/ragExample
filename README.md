@@ -39,6 +39,10 @@ Works but very slow without GPU
 
 Tested with OpenAI API. Works. *Inital testing, maybe 50 trial queries ~ 50k tokens, 0.30€*
 
+Would also like to test [*LLäMmlein*](https://arxiv.org/abs/2411.11171) from [Uni Würzburg](https://www.informatik.uni-wuerzburg.de/datascience/projects/nlp/llammlein/), available [here](https://huggingface.co/collections/LSX-UniWue/llammlein-6732ff41f3705c686e605762)
 
 
 
+
+
+https://huggingface.co/collections/LSX-UniWue/llammlein-chat-preview-6734b15176c7f079f72a9291
