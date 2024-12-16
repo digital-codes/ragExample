@@ -51,10 +51,11 @@ Would also like to test [*LLäMmlein*](https://arxiv.org/abs/2411.11171) from [U
 
  1. [Ratsinformation Karlsruhe](https://sitzungskalender.karlsruhe.de/db/ratsinformation/start)
     All documents since 2014 downloaded. Text and metadata extraction still incomplete (e.g. missing titles). Tests on 2024 subset provide reasonable results.
+ 2. [Klimaschutzkonzeppt Karlsruhe](https://www.karlsruhe.de/umwelt-klima/klimaschutz-klimaanpassung/klimaschutzaktivitaeten/klimaschutzziele-der-stadt-karlsruhe) 
 
 #### Examples
 
-*Using elasticsearch*
+*Using elasticsearch for Ratsinfomation*
 
 massnahmen zum klimaschutz
 > (rag) rag@ragtest:~/temp/okl/ka-rat$ python ragElasticOpenai.py  
@@ -107,4 +108,43 @@ Diese Probleme erfordern dringend koordinierte und nachhaltige Lösungen.
 ['2024-termin-9524-top20-link1.json_chunk_0', '2024-termin-9531-top20-link3.json_chunk_2', '2024-termin-9532-top37-link1.json_chunk_0']
 [1.5981559, 1.5930581, 1.5916256]
 [{'filename': '2024-termin-9524-top20-link1.json', 'indexdate': '2024-12-14T16:19:27.922537', 'dcterms:modified': '2024-04-30T08:56:44Z', 'dc:language': 'de-DE'}, {'filename': '2024-termin-9531-top20-link3.json', 'indexdate': '2024-12-14T16:17:01.698201', 'dcterms:modified': '2024-10-14T05:52:05Z', 'dc:language': 'de-DE'}, {'filename': '2024-termin-9532-top37-link1.json', 'indexdate': '2024-12-14T16:21:14.050966', 'dcterms:modified': '2024-10-09T09:59:10Z', 'dc:language': 'de-DE'}]
+
+*Using Chromadb for Klimaschutzkonzept*
+
+ Wie hoch ist das Ausbauziel für Photovoltaik auf städtischen Liegenschaften?
+ 
+> Das Ausbauziel für Photovoltaik auf städtischen Liegenschaften liegt bei ca. 10.000 kWp bis 2040, wobei bis 2030 bereits 5.000 kWp erreicht werden sollen. Dies entspricht einer jährlichen CO2-Einsparung von rund 1.100 t/a ab 2030.  
+[['B_1_2', 'E_1_3', 'A_4_1']]
+
+
+Wie will die Stadt den Fahrradverkehr stärken?
+
+> Die Stadt Karlsruhe will den Fahrradverkehr stärken, indem sie ein Leitprojekt "Öffentlicher Raum und Mobilität" im Rahmen des IQ-Korridorthemas "Zukunft Innenstadt" erarbeitet. Dieses Konzept soll alle Mobilitätsarten und deren Wegebeziehungen in der Innenstadt integriert behandeln und eine hohe Priorität auf der Reduzierung des MIV (motorisierter Individualverkehr) und der Freihaltung insbesondere von Fußgängerbereichen vom Kfz-Verkehr legen. Konkrete Vorschläge sollen auch hinsichtlich Einfuhrbeschränkungen und Reduzierungsmöglichkeiten für den Lieferverkehr erarbeitet werden. Zudem sind erste Schritte zur Regulation des MIV im Innenstadtbereich bereits in Umsetzung oder konkret geplant, wie die Sperrung für den Kfz-Verkehr in der Erbprinzenstraße. 
+[['E_1_1', 'D_1_2', 'E_1_2']]
+
+
+Auf welche Energieträger setzt die Stadt bei der Energiewende?  
+
+> Die Stadt Karlsruhe setzt bei der Energiewende auf Erneuerbare Energien und plant, den Anteil erneuerbarer Energien an der Wärmeversorgung durch den Energieträgerwechsel zu erhöhen. Zusätzlich fördert sie die Elektromobilität durch den Ausbau der Ladeinfrastruktur im öffentlichen Raum. Sie strebt an, dass jedes dritteAuto klimaneutral fährt. Die Stadtwerke Karlsruhe spielen dabei eine zentrale Rolle in der Umsetzung dieser Maßnahmen.  
+[['E_1_2', 'B_2_2', 'D_3_3']]
+
+
+Wann soll Klimaneutralität erreicht werden?
+
+> Laut dem Kontext sollen sowohl die Stadt Karlsruhe als auch die Landesregierung bis 2040 eine weitgehend klimaneutrale Verwaltung anstreben. Ergänzend dazu gibt es Bestrebungen am Karlsruher Institut für Technologie (KIT) und in der Hochschule Karlsruhe Wirtschaft und Technik (HsKA), eigene Initiativen zur Klimaneutralität zu starten.  
+[['E_3_4', 'C_1_1', 'C_2_1']]
+
+
+ Welche Angebote im Klimaschutz gibt es für die Wirtschaft / Unternehmen?
+ 
+> In Karlsruhe werden Unternehmen durch das Klimaschutzmanagement für den Bereich Wirtschaft unterstützt. Dazu gehört ein "Kümmerer" für Energieeinsparpotenziale, eine Andockung an Projektstellen für Revitalisierung von Gewerbegebieten und gebietsbezogene Arbeit. Betreuung der Klimaallianz und Koordinierung neuer Netzwerke sind weitere Aufgaben. Es wird eine enge Zusammenarbeit mit Beratungs- und Fortbildungsakteuren angestrebt. Die Maßnahme schafft keine direkte CO2-Einsparung, ist aber Voraussetzung für projektbezogene Einsparungen.  
+[['E_3_3', 'E_3_4', 'C_1_1']]
+
+
+Wer berät die Bürger*innen bei Sanierungsmaßnahmen?
+
+> Bürger*innen werden in Sanierungsmaßnahmen durch ein unabhängiges und kostenfreies Beratungs- und Sanierungsmanagement beraten. Das Bewusstsein für den persönlichen Beitrag zur klimaneutralen Stadt wird damit geschaffen.  
+[['B_2_2', 'E_1_2', 'D_1_2']]
+
+
 
