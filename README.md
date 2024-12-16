@@ -109,7 +109,7 @@ Diese Probleme erfordern dringend koordinierte und nachhaltige Lösungen.
 [1.5981559, 1.5930581, 1.5916256]
 [{'filename': '2024-termin-9524-top20-link1.json', 'indexdate': '2024-12-14T16:19:27.922537', 'dcterms:modified': '2024-04-30T08:56:44Z', 'dc:language': 'de-DE'}, {'filename': '2024-termin-9531-top20-link3.json', 'indexdate': '2024-12-14T16:17:01.698201', 'dcterms:modified': '2024-10-14T05:52:05Z', 'dc:language': 'de-DE'}, {'filename': '2024-termin-9532-top37-link1.json', 'indexdate': '2024-12-14T16:21:14.050966', 'dcterms:modified': '2024-10-09T09:59:10Z', 'dc:language': 'de-DE'}]
 
-*Using Chromadb for Klimaschutzkonzept*
+*Using Chromadb for Klimaschutzkonzept* Brackets indicate selected action topics from search phase
 
  Wie hoch ist das Ausbauziel für Photovoltaik auf städtischen Liegenschaften?
  
