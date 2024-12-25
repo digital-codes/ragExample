@@ -1,4 +1,5 @@
-"""This script provides tools for querying a remote database using a Retrieval-Augmented Generation (RAG) system. 
+"""
+This script provides tools for querying a remote database using a Retrieval-Augmented Generation (RAG) system. 
 It includes functions for initializing the system, checking the database, and querying a language model (LLM).
 Modules:
     - json
@@ -16,13 +17,10 @@ Functions:
     - initQuery(context, query, size=200): Initializes a query using the provided context and query parameters.
     - followQuery(query, history, size=200): Executes a follow-up query using the provided LLM configuration.
 Main Execution:
-    - Parses command-line arguments for items, language, and collection.
+    - Parses command-line arguments for items, language, collection, embProvider, and llmProvider.
     - Initializes the configuration and database.
     - Continuously prompts the user for queries, processes them, and prints the answers.
 """
-import json
-import os
-import sys
 import pandas as pd
 import argparse 
 
@@ -166,7 +164,7 @@ if __name__ == "__main__":
     config["llmProvider"] = args.llmProvider
     if DEBUG: print(config)
     initialize()
-    print(config["llm"].getModel())
+
     msgHistory = []
     query = input("\nEnter your query: ")
     followUp = False

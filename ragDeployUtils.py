@@ -45,6 +45,7 @@ class Llm:
             raise ValueError("Invalid provider")
         self.lang = "german" if lang == "de" else "english"
         self.provider = provider
+        self.temperature = 0.2
 
     def getModel(self):
         return self.model
@@ -66,7 +67,7 @@ class Llm:
         """
         data = {
             "model": self.model,
-            "messages": [{"role": "user", "content": richQuery, "temperature": 0.4}],
+            "messages": [{"role": "user", "content": richQuery, "temperature": self.temperature}],
         }
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
@@ -91,7 +92,7 @@ class Llm:
         """
         data = {
             "model": self.model,
-            "messages": [{"role": "user", "content": richQuery, "temperature": 0.4}],
+            "messages": [{"role": "user", "content": richQuery, "temperature": self.temperature}],
         }
         if DEBUG:
             print(richQuery)
@@ -118,7 +119,7 @@ class Llm:
         """
         data = {
             "model": self.model,
-            "messages": [{"role": "user", "content": richQuery, "temperature": 0.4}],
+            "messages": [{"role": "user", "content": richQuery, "temperature": self.temperature}],
         }
         if DEBUG:
             print(richQuery)
@@ -149,7 +150,7 @@ class Llm:
         data = {
             "model": self.model,
             "messages": [msg],  # msgHistory,
-            "temperature": 0.4,
+            "temperature": self.temperature,
         }
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
@@ -202,7 +203,7 @@ class Llm:
         data = {
             "model": self.model,
             "messages": msgs,  # msgHistory,
-            "temperature": 0.4,
+            "temperature": self.temperature,
         }
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
@@ -236,7 +237,7 @@ class Llm:
         data = {
             "model": self.model,
             "messages": msgHistory,  # msgHistory,
-            "temperature": 0.4,
+            "temperature": self.temperature,
         }
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
