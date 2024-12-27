@@ -9,26 +9,42 @@ DEBUG = False
 
 
 class Embedder:
+    @measure_execution_time
     def __init__(self, provider: str = "deepinfra"):
         if provider == "deepinfra":
             self.api_key = pr.deepInfra["apiKey"]
             self.model = pr.deepInfra["embMdl"]
             self.url = pr.deepInfra["embUrl"]
+            self.engine = None
+        elif provider == "local":
+            try:
+                from sentence_transformers import SentenceTransformer
+                self.model = 'sentence-transformers/all-MiniLM-L12-v2'
+                self.engine = SentenceTransformer(self.model, device='cpu')
+                self. url = None
+                # embeddings = model.encode(sentences)  # Returns a NumPy array
+            except ModuleNotFoundError:
+                raise ValueError("Error: Please install sentence_transformers")
         else:
             raise ValueError("Invalid provider")
 
     @measure_execution_time
     def encode(self, input):
-        hdrs = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}",
-        }
-        data = {"model": self.model, "input": input, "encoding_format": "float"}
-        response = requests.post(self.url, headers=hdrs, json=data)
-        if response.status_code == 200:
-            return response.json()
+        """ response like: {"data":["embedding":vector]} """
+        if (self.url == None) and (self.engine != None):
+            response = {"data": [{"embedding": list(self.engine.encode([input])[0].astype(float))}]}
+            return response
         else:
-            return None
+            hdrs = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            }
+            data = {"model": self.model, "input": input, "encoding_format": "float"}
+            response = requests.post(self.url, headers=hdrs, json=data)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return None
 
 
 class Llm:
