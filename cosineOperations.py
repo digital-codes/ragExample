@@ -5,6 +5,8 @@ import json
 import numpy as np
 from ragInstrumentation import measure_execution_time
 from joblib import Parallel, delayed
+# numba optional 
+from numba import njit, prange
 
 DIM = 384
 DEBUG = False
@@ -36,6 +38,55 @@ def load_vectors(filename):
     
     return arr_normalized
 
+
+#########################
+@njit(parallel=True)
+def batch_cosine_similarities(query, vectors):
+    """
+    Compute the cosine similarity between a single 'query' vector 
+    and each row in 'vectors' in parallel.
+
+    :param query:   1D array of shape (D,)
+    :param vectors: 2D array of shape (N, D)
+    :return:        1D array of length N, where result[i] is the 
+                    cosine similarity between query and vectors[i].
+    """
+    N = vectors.shape[0]
+    D = vectors.shape[1]
+    
+    # Precompute norm of query
+    norm_q = 0.0
+    for i in range(D):
+        norm_q += query[i] * query[i]
+    norm_q = np.sqrt(norm_q)
+
+    # Prepare an array to store all similarities
+    sims = np.empty(N, dtype=np.float32)
+    
+    for i in prange(N):
+        # Dot product and norm of the i-th vector
+        dp = 0.0
+        norm_v = 0.0
+        for j in range(D):
+            val = vectors[i, j]
+            dp += query[j] * val
+            norm_v += val * val
+        
+        denom = (norm_q * np.sqrt(norm_v)) + 1e-9
+        sims[i] = dp / denom
+
+    return sims
+
+def sort_similarities_descending(sims: np.ndarray):
+    """
+    Sort similarities (1D array) in descending order. Return 
+    (sorted_sims, sorted_indices).
+    """
+    sorted_indices = np.argsort(sims)[::-1]
+    sorted_sims = sims[sorted_indices]
+    return sorted_sims, sorted_indices
+
+#########################
 def compute_cosine_similarity(query: np.ndarray, doc: np.ndarray) -> float:
     """
     Compute the cosine similarity between two vectors.
@@ -82,6 +133,15 @@ def query_vectors(vectors, query, num_neighbors=5, data=None):
     
     return indices[:num_neighbors], distances[:num_neighbors]
 
+@measure_execution_time
+def query_vectors2(vectors, query, num_neighbors=5, data=None):
+    query_norm = np.linalg.norm(query) + 1e-9
+    query_normalized = query / query_norm
+
+    dists = batch_cosine_similarities(query_normalized, vectors)
+    distances, indices = sort_similarities_descending(dists)
+   
+    return indices[:num_neighbors], distances[:num_neighbors]
 
 
 if __name__ == "__main__":
@@ -128,6 +188,9 @@ if __name__ == "__main__":
         query_vec = np.array(query, dtype=np.float32).reshape(1, DIM)
         k = 5
         result, dists = query_vectors(vectors,query_vec[0], k)
+        print("NN indices:", result)
+        print("NN distances:", dists)
+        result, dists = query_vectors2(vectors,query_vec[0])
         print("NN indices:", result)
         print("NN distances:", dists)
     else:
