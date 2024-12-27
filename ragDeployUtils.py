@@ -9,6 +9,30 @@ DEBUG = False
 
 
 class Embedder:
+    """A class to handle text embedding using either a remote or local provider.
+
+    Attributes:
+    -----------
+    api_key : str
+        The API key for the remote provider (only used if provider is "deepinfra").
+    model : str
+        The model name or path used for embedding.
+    url : str or None
+        The URL for the remote provider's embedding service (only used if provider is "deepinfra").
+    engine : SentenceTransformer or None
+        The local embedding engine (only used if provider is "local").
+
+    Methods:
+    --------
+    __init__(provider: str = "deepinfra"):
+        Initializes the Embedder with the specified provider.
+    
+    encode(input: str) -> dict:
+        Encodes the input text and returns the embedding as a dictionary.
+    
+    supports remote or local provider. local vs deepinfra on same model all-MiniLM-L12-v2 
+    provide comparable results. 400 vectors from ksk_full collection differ only after 6th decimal digit.
+    """
     @measure_execution_time
     def __init__(self, provider: str = "deepinfra"):
         if provider == "deepinfra":
@@ -30,7 +54,22 @@ class Embedder:
 
     @measure_execution_time
     def encode(self, input):
-        """ response like: {"data":["embedding":vector]} """
+        """
+        Encodes the given input into a specified format.
+        like: {"data":["embedding":vector]}
+
+        If the URL is not provided and the engine is available, it uses the engine to encode the input.
+        Otherwise, it sends a POST request to the specified URL with the input data.
+
+        Args:
+            input (str): The input data to be encoded.
+
+        Returns:
+            dict or None: A dictionary containing the encoded data if successful, otherwise None.
+
+        Raises:
+            requests.exceptions.RequestException: If the request to the URL fails.
+        """
         if (self.url == None) and (self.engine != None):
             response = {"data": [{"embedding": list(self.engine.encode([input])[0].astype(float))}]}
             return response
@@ -48,6 +87,33 @@ class Embedder:
 
 
 class Llm:
+    """
+    A class to interact with different language model providers for various NLP tasks.
+    Attributes:
+        api_key (str): The API key for the selected provider.
+        model (str): The model identifier for the selected provider.
+        url (str): The API endpoint URL for the selected provider.
+        lang (str): The language for responses ("german" or "english").
+        provider (str): The name of the provider ("deepinfra" or "openai").
+        temperature (float): The temperature setting for the model's responses.
+    Methods:
+        getModel():
+            Returns the current model identifier.
+        setModel(model):
+            Sets a new model identifier.
+        query(query, size=100):
+            Sends a query to the language model and returns the response and token usage.
+        summarize(text, size=500):
+            Summarizes the given text and returns the summary and token usage.
+        translate(text, src="english"):
+            Translates the given text from the source language to the target language and returns the translation and token usage.
+        queryWithContext(context, query, msgHistory=[], size=100):
+            Sends a query with context to the language model and returns the response, token usage, and updated message history.
+        initChat(context, query, size=100):
+            Initializes a chat session with context and returns the response, token usage, and initial message history.
+        followChat(query, msgHistory=[], size=100):
+            Continues a chat session with a follow-up query and returns the response, token usage, and updated message history.
+    """
     def __init__(self, provider: str = "deepinfra", lang="de"):
         if provider == "deepinfra":
             self.api_key = pr.deepInfra["apiKey"]
@@ -64,13 +130,36 @@ class Llm:
         self.temperature = 0.2
 
     def getModel(self):
+        """
+        Retrieve the model instance.
+
+        Returns:
+            object: The model instance.
+        """
         return self.model
     
     def setModel(self, model):
+        """
+        Sets the model for the instance.
+
+        Args:
+            model: The model to be set.
+        """
         self.model = model
 
     @measure_execution_time
     def query(self, query, size = 100):
+        """
+        Executes a query to an intelligent assistant model and returns the response.
+
+        Args:
+            query (str): The query string to be sent to the model.
+            size (int, optional): The maximum number of words in the response. Defaults to 100.
+
+        Returns:
+            tuple: A tuple containing the response text (str) and the total number of tokens used (int),
+                   or None if the request was unsuccessful.
+        """
         hdrs = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
@@ -96,6 +185,29 @@ class Llm:
 
     @measure_execution_time
     def summarize(self, text, size=500):
+        """
+    Summarizes the given text using an external API.
+
+        Args:
+            text (str): The text to be summarized.
+            size (int, optional): The maximum number of words for the summary. Defaults to 500.
+
+        Returns:
+            tuple: A tuple containing the summarized text (str) and the total number of tokens used (int) if the request is successful.
+            None: If the request fails.
+
+        Raises:
+            requests.exceptions.RequestException: If there is an issue with the HTTP request.
+
+        Decorators:
+            measure_execution_time: Measures the execution time of the function.
+
+        Notes:
+            - The function sends a POST request to an external API with the provided text and other parameters.
+            - The API key and other configurations are expected to be set as instance variables.
+            - The function prints the query if DEBUG mode is enabled.
+            
+        """
         hdrs = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
