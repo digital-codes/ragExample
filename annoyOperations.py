@@ -81,7 +81,7 @@ def load_index(filename, dimension=DIM, metric='angular'):
     index.load(filename)
     return index
         
-def query_index(index, query_vector, num_neighbors=5, data=None):
+def query_index(index, query, num_neighbors=5, data=None):
     """
     Query the Annoy index for nearest neighbors of a given vector.
     
@@ -95,9 +95,11 @@ def query_index(index, query_vector, num_neighbors=5, data=None):
         - indices:   list of neighbor IDs
         - distances: list of distances (Annoy can return them if include_distances=True)
     """
+    query_norm = np.linalg.norm(query) + 1e-9
+    query_normalized = query / query_norm
     # Annoy can return the distances if we ask for it:
     indices, distances = index.get_nns_by_vector(
-        query_vector,
+        query_normalized,
         num_neighbors,
         include_distances=True
     )
