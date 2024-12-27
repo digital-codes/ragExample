@@ -37,7 +37,7 @@ def load_vectors(filename):
 #     Annoy requires you to manually add_item(i, vector).
 #     metric='angular' is typically used for cosine-like similarity. Annoy’s “angular distance” = 2 * (1 - cos(\theta)).
 #     If you want pure L2 distance, use metric='euclidean'.
-def build_index(data, metric='angular', n_trees=8):
+def build_index(data, metric='euclidean', n_trees=8):
     """
     Build an Annoy index from a numpy array of shape (N, D).
     
@@ -68,7 +68,7 @@ def save_index(index, filename):
     index.save(filename)
     
 
-def load_index(filename, dimension=DIM, metric='angular'):
+def load_index(filename, dimension=DIM, metric='euclidean'):
     """
     Loads an existing Annoy index from disk.
     
