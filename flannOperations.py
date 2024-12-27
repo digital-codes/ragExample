@@ -3,9 +3,12 @@ import argparse
 import os
 import json
 import numpy as np
+from ragInstrumentation import measure_execution_time
 
 DIM = 384
+DEBUG = False
 
+@measure_execution_time
 def load_vectors(filename):
     """Load all vectors from a binary file of float32, shape: (N, DIM)."""
     file_size = os.path.getsize(filename)
@@ -33,19 +36,23 @@ def load_vectors(filename):
     return arr_normalized
 
 
+@measure_execution_time
 def build_index(data):
     flann = FLANN()
     flann.build_index(data, algorithm="kdtree", trees=8)
     return flann
 
+@measure_execution_time
 def save_index(flann, filename):
     flann.save_index(filename)
     
+@measure_execution_time
 def load_index(filename, data):
     flann = FLANN()
     flann.load_index(filename, data)
     return flann
 
+@measure_execution_time
 def query_index(flann, query, num_neighbors=5):
     query_norm = np.linalg.norm(query) + 1e-9
     query_normalized = query / query_norm
@@ -55,10 +62,20 @@ def query_index(flann, query, num_neighbors=5):
     # already sorted with smallest distance first
     return indices, distances
 
+@measure_execution_time
+def query2_index(flann, query, radius=.8):
+    query_norm = np.linalg.norm(query) + 1e-9
+    query_normalized = query / query_norm
+    indices, dists = flann.radius(query_normalized, radius)
+    # 'dists' often are squared L2 distances. Let's convert:
+    distances = np.sqrt(dists)  # Now it's actual L2
+    # already sorted with smallest distance first
+    return indices, distances
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--command',choices=["build","load","search"])      # option that takes a value
+    parser.add_argument('-c', '--command',choices=["build","load","search","text"])      # option that takes a value
     parser.add_argument('-v', '--vectors', default="vectors.bin")      # option that takes a value
     parser.add_argument('-i', '--index',default="index.bin")      # option that takes a value
     parser.add_argument('-q', '--query')      # option that takes a value
@@ -102,6 +119,40 @@ if __name__ == "__main__":
         result, dists = query_index(index,query_vec, k)
         print("NN indices:", result)
         print("NN distances:", dists)
+        result, dists = query2_index(index,query_vec, k)
+        print("NN indices:", result)
+        print("NN distances:", dists)
+    elif args.command == "text":
+        if not os.path.exists(args.vectors):
+            print(f"Source file {args.vectors} not found.")
+            parser.print_help()
+            exit(1)
+        if not os.path.exists(args.index):
+            print(f"Source file {args.index} not found.")
+            parser.print_help()
+            exit(1)
+        if args.query == None:
+            print(f"No query.")
+            parser.print_help()
+            exit(1)
+        vectors = load_vectors(args.vectors)
+        index = load_index(args.index, vectors)
+        # Create a dummy query vector
+        #query_vec = np.ones((1, DIM), dtype=np.float32)
+        query_text = args.query
+        try:
+            import ragDeployUtils as rag
+            embedder = rag.Embedder(provider="local")
+        except:
+            print("No local embedder available")
+            embedder = rag.Embedder()
+        query = embedder.encode(query_text)["data"][0]["embedding"]
+        query_vec = np.array(query, dtype=np.float32).reshape(1, DIM)
+        k = 5
+        result, dists = query_index(index,query_vec[0], k)
+        print("NN indices:", result)
+        print("NN distances:", dists)
+
 
     else:
         parser.print_help()

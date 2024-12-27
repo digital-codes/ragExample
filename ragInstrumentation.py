@@ -5,7 +5,7 @@ This module provides a decorator to log query into database.
 """
 import time
 
-DEBUG = False
+DEBUG = True
 
 def measure_execution_time(func):
     """

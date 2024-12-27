@@ -3,9 +3,12 @@ import argparse
 import os
 import json
 import numpy as np
+from ragInstrumentation import measure_execution_time
 
 DIM = 384
+DEBUG = False
 
+@measure_execution_time
 def load_vectors(filename):
     """Load all vectors from a binary file of float32, shape: (N, DIM)."""
     file_size = os.path.getsize(filename)
@@ -37,6 +40,7 @@ def load_vectors(filename):
 #     Annoy requires you to manually add_item(i, vector).
 #     metric='angular' is typically used for cosine-like similarity. Annoy’s “angular distance” = 2 * (1 - cos(\theta)).
 #     If you want pure L2 distance, use metric='euclidean'.
+@measure_execution_time
 def build_index(data, metric='euclidean', n_trees=8):
     """
     Build an Annoy index from a numpy array of shape (N, D).
@@ -61,6 +65,7 @@ def build_index(data, metric='euclidean', n_trees=8):
     return index
 
 
+@measure_execution_time
 def save_index(index, filename):
     """
     Saves the Annoy index to a file.
@@ -68,6 +73,7 @@ def save_index(index, filename):
     index.save(filename)
     
 
+@measure_execution_time
 def load_index(filename, dimension=DIM, metric='euclidean'):
     """
     Loads an existing Annoy index from disk.
@@ -81,6 +87,7 @@ def load_index(filename, dimension=DIM, metric='euclidean'):
     index.load(filename)
     return index
         
+@measure_execution_time
 def query_index(index, query, num_neighbors=5, data=None):
     """
     Query the Annoy index for nearest neighbors of a given vector.
@@ -114,7 +121,7 @@ def query_index(index, query, num_neighbors=5, data=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--command',choices=["build","load","search"])      # option that takes a value
+    parser.add_argument('-c', '--command',choices=["build","load","search","text"])      # option that takes a value
     parser.add_argument('-v', '--vectors', default="vectors.bin")      # option that takes a value
     parser.add_argument('-i', '--index',default="index_a.bin")      # option that takes a value
     parser.add_argument('-q', '--query')      # option that takes a value
@@ -152,7 +159,31 @@ if __name__ == "__main__":
         result, dists = query_index(index,query_vec[0], k)
         print("NN indices:", result)
         print("NN distances:", dists)
-
+    elif args.command == "text":
+        if not os.path.exists(args.index):
+            print(f"Source file {args.index} not found.")
+            parser.print_help()
+            exit(1)
+        if args.query == None:
+            print(f"No query.")
+            parser.print_help()
+            exit(1)
+        index = load_index(args.index)
+        # Create a dummy query vector
+        #query_vec = np.ones((1, DIM), dtype=np.float32)
+        query_text = args.query
+        try:
+            import ragDeployUtils as rag
+            embedder = rag.Embedder(provider="local")
+        except:
+            print("No local embedder available")
+            embedder = rag.Embedder()
+        query = embedder.encode(query_text)["data"][0]["embedding"]
+        query_vec = np.array(query, dtype=np.float32).reshape(1, DIM)
+        k = 5
+        result, dists = query_index(index,query_vec[0], k)
+        print("NN indices:", result)
+        print("NN distances:", dists)
     else:
         parser.print_help()
         exit(1)
