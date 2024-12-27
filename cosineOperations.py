@@ -1,12 +1,26 @@
-from annoy import AnnoyIndex
 import argparse 
 import os
 import json
 import numpy as np
 from ragInstrumentation import measure_execution_time
 from joblib import Parallel, delayed
+
+# embedder will complain on tokenizer parallelism
+# set TOKENIZERS_PARALLELISM to False before running
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 # numba optional 
-from numba import njit, prange, set_num_threads
+try:
+    from numba import njit, prange, set_num_threads
+    useNumba = True
+except:
+    useNumba = False
+    # fake decorator function   
+    def njit(*args, **kwargs):
+        def wrapper(func):
+            return func
+        return wrapper
+
 
 DIM = 384
 DEBUG = False
@@ -191,9 +205,10 @@ if __name__ == "__main__":
         result, dists = query_vectors(vectors,query_vec[0], k)
         print("NN indices:", result)
         print("NN distances:", dists)
-        result, dists = query_vectors2(vectors,query_vec[0])
-        print("NN indices:", result)
-        print("NN distances:", dists)
+        if useNumba:
+            result, dists = query_vectors2(vectors,query_vec[0])
+            print("NN indices:", result)
+            print("NN distances:", dists)
     else:
         parser.print_help()
         exit(1)
