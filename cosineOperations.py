@@ -6,7 +6,7 @@ import numpy as np
 from ragInstrumentation import measure_execution_time
 from joblib import Parallel, delayed
 # numba optional 
-from numba import njit, prange
+from numba import njit, prange, set_num_threads
 
 DIM = 384
 DEBUG = False
@@ -138,6 +138,7 @@ def query_vectors2(vectors, query, num_neighbors=5, data=None):
     query_norm = np.linalg.norm(query) + 1e-9
     query_normalized = query / query_norm
 
+    set_num_threads(8)  # Use 8 threads
     dists = batch_cosine_similarities(query_normalized, vectors)
     distances, indices = sort_similarities_descending(dists)
    
