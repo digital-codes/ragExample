@@ -23,8 +23,8 @@ class Project(Base):
         description (str): A textual description of the project. Can be null.
         vectorName (str): The name of the vector associated with the project. Cannot be null.
         vectorPath (str): The file path to the vector associated with the project. Cannot be null.
-        indexName (str): The name of the index associated with the project. Cannot be null.
-        indexPath (str): The file path to the index associated with the project. Cannot be null.
+        indexName (str): The name of the index associated with the project. Can be null, then brute-force comparisons of vectors.
+        indexPath (str): The file path to the index associated with the project. Can be null.
     """
     __tablename__ = 'projects'
 
@@ -149,7 +149,8 @@ class DatabaseUtility:
         and create all tables.
         """
         self.engine = create_engine(connection_string)
-        self.Session = sessionmaker(bind=self.engine, expire_on_commit=False)
+        self.Session = sessionmaker(bind=self.engine, expire_on_commit=False) 
+        # expire_on_commit=False to prevent session from expiring after !!!
         self._initialize_tables()
 
     def _initialize_tables(self):
@@ -180,7 +181,7 @@ class DatabaseUtility:
         with self.get_session() as session:
             session.add(obj)
             session.flush()
-            session.refresh(obj)  # Forcefully load all attributes from the database
+            #session.refresh(obj)  # Forcefully load all attributes from the database
             return obj
 
     def search(self, model, filters=None, order_by=None):
@@ -400,9 +401,7 @@ class DatabaseUtility:
         engine.dispose()
 
 
-
-# Test function to populate and query dummy data
-def test_database():
+if __name__ == "__main__":
     connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
     #db_util = DatabaseUtility(connection_string)
     DatabaseUtility.delete_all(connection_string)
@@ -410,7 +409,6 @@ def test_database():
 
     layout = db.get_table_layout("items")
     print(layout)
-    session = db.get_session()
 
     # Create dummy projects
     project = Project(name="Project Alpha", description="Description of Project Alpha",vectorName="prj1.vec",vectorPath = "./data")
@@ -499,7 +497,3 @@ def test_database():
     for chunk in results:
         print(f"Chunk, Item: {chunk.itemId}, Index: {chunk.chunkIdx}")
         #print(f"Chunk, Item: {item.id}, Index: {chunk.chunkIdx}")
-
-
-if __name__ == "__main__":
-    test_database()
