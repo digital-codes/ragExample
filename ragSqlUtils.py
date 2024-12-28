@@ -227,6 +227,26 @@ def find_chunk(session: Session, chunk_idx: int, project_id: int):
     result = session.execute(stmt).scalars().first()
     return result
 
+
+def get_chunks(session: Session, project_id: int):
+    """
+    Get a list of all chunks for a given projectId, ordered by itemIndex and then by chunkIdx.
+
+    :param session: SQLAlchemy Session object
+    :param project_id: ID of the project
+    :return: List of Chunk objects
+    """
+    stmt = (
+        select(Chunk)
+        .join(Item, Chunk.item_id == Item.id)  # Join Chunk -> Item
+        .where(Item.project_id == project_id)  # Filter by projectId
+        .order_by(Item.itemIndex.asc(), Chunk.chunkIdx.asc())  # Order by itemIndex and chunkIdx
+    )
+
+    # Execute the query
+    result = session.execute(stmt).scalars().all()
+    return result
+
 def find_item(session: Session, chunk_idx: int, project_id: int):
     """
     Find an Item by a chunk index and project ID.
@@ -341,8 +361,9 @@ def test_database():
 
     # Create dummy items
     item1 = Item(name="Item One", code=101, project_id=project1.id, summary="Summary of item one", fulltext="Fulltext for item one", tags="tag1,tag2", title="Title One", itemIndex=1)
-    item2 = Item(name="Item Two", code=102, project_id=project2.id, summary="Summary of item two", fulltext="Fulltext for item two", tags="tag3,tag4", title="Title Two", itemIndex=2)
-    session.add_all([item1, item2])
+    item2 = Item(name="Item Two", code=102, project_id=project2.id, summary="Summary of item two", fulltext="Fulltext for item two", tags="tag3,tag4", title="Title Two", itemIndex=1)
+    item3 = Item(name="Item Three", code=102, project_id=project1.id, summary="Summary of item three", fulltext="Fulltext for item three", tags="tag1,tag2", title="Title Three", itemIndex=2)
+    session.add_all([item1, item2,item3])
     session.commit()
 
     # Create dummy chunks
@@ -351,7 +372,15 @@ def test_database():
     session.add(chunk)
     session.flush()
     chunkIds.append(chunk.id)
-    chunk = Chunk(chunkIdx=2, item_id=item2.id, text="Chunk 2 text")
+    chunk = Chunk(chunkIdx=1, item_id=item2.id, text="Chunk 2 text")
+    session.add(chunk)
+    session.flush()
+    chunkIds.append(chunk.id)
+    chunk = Chunk(chunkIdx=2, item_id=item1.id, text="Chunk 3 text")
+    session.add(chunk)
+    session.flush()
+    chunkIds.append(chunk.id)
+    chunk = Chunk(chunkIdx=1, item_id=item3.id, text="Chunk 4 text")
     session.add(chunk)
     session.flush()
     chunkIds.append(chunk.id)
@@ -409,6 +438,10 @@ def test_database():
     print(find_chunk(session, 1, 1).text)
     print(find_item(session, 1, 1).title)
 
+    results  = get_chunks(session, 1)
+    for chunk in results:
+        print(f"Chunk, Item: {chunk.item_id}, Index: {chunk.chunkIdx}")
+        #print(f"Chunk, Item: {item.id}, Index: {chunk.chunkIdx}")
 
 
 if __name__ == "__main__":
