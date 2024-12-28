@@ -19,8 +19,9 @@ class Project(Base):
 
     Attributes:
         id (int): The primary key of the project.
-        name (str): The name of the project. Cannot be null.
+        name (str): The name of the project. Cannot be null. Unique
         description (str): A textual description of the project. Can be null.
+        lang (str): The language of the project. Defaults to 'en'.
         vectorName (str): The name of the vector associated with the project. Cannot be null.
         vectorPath (str): The file path to the vector associated with the project. Cannot be null.
         indexName (str): The name of the index associated with the project. Can be null, then brute-force comparisons of vectors.
@@ -29,8 +30,9 @@ class Project(Base):
     __tablename__ = 'projects'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(256), nullable=False)
+    name = Column(String(256), unique=True, nullable=False)
     description = Column(Text, nullable=True)
+    lang = Column(String(2), nullable=False, default="en")
     vectorName = Column(String(256), nullable=False)
     vectorPath = Column(String(1024), nullable=False)
     indexName = Column(String(256), nullable=True)
@@ -48,12 +50,12 @@ class Item(Base):
         summary (str, optional): A brief summary of the item.
         fulltext (str, optional): The full text description of the item.
         tags (str, optional): Tags associated with the item.
-        title (str, optional): The title of the item.
+        title (str): The title of the item.
         created (datetime, optional): The creation date of the item. Defaults to the current date.
         modified (datetime, optional): The last modified date of the item.
         url (str, optional): The URL associated with the item.
         license (str, optional): The license information of the item.
-        itemIndex (int): The index of the item.
+        itemIdx (int): The index of the item.
 
     Relationships:
         project (Project): The project to which the item belongs.
@@ -67,12 +69,12 @@ class Item(Base):
     summary = Column(Text, nullable=True)
     fulltext = Column(Text, nullable=True)
     tags = Column(String(1024), nullable=True)
-    title = Column(String(256), nullable=True)
+    title = Column(String(256), nullable=False)
     created = Column(DateTime, nullable=True, default=func.current_date())
     modified = Column(DateTime, nullable=True)
     url = Column(String(1024), nullable=True)
     license = Column(String(256), nullable=True)
-    itemIndex = Column(Integer, nullable=False)
+    itemIdx = Column(Integer, nullable=False)
 
     project = relationship("Project", back_populates="items")
 
@@ -84,7 +86,8 @@ class Chunk(Base):
 
     Attributes:
         id (int): Primary key of the chunk.
-        chunkIdx (int): Index of the chunk.
+        chunkNum (int): Number of the chunk within item
+        chunkIdx (int): Index of the chunk in project. Matches vector index.
         itemId (int): Foreign key referencing the associated item.
         text (str): The text content of the chunk.
         item (Item): Relationship to the Item model, back_populated by 'chunks'.
@@ -93,6 +96,7 @@ class Chunk(Base):
 
     id = Column(Integer, primary_key=True)
     chunkIdx = Column(Integer, nullable=False)
+    chunkNum = Column(Integer, nullable=False)
     itemId = Column(Integer, ForeignKey('items.id'), nullable=False)
     text = Column(Text, nullable=True)
 
@@ -238,23 +242,29 @@ class DatabaseUtility:
 
     def get_chunks(self, projectId: int):
         """
-        Get a list of all chunks for a given projectId, ordered by itemIndex and then by chunkIdx.
+        Get a list of all chunks for a given projectId, ordered by itemIdx and then by chunkIdx.
 
         :param session: SQLAlchemy Session object
         :param projectId: ID of the project
         :return: List of Chunk objects
         """
+        # stmt = (
+        #     select(Chunk)
+        #     .join(Item, Chunk.itemId == Item.id)  # Join Chunk -> Item
+        #     .where(Item.projectId == projectId)  # Filter by projectId
+        #     .order_by(Item.itemIdx.asc(), Chunk.chunkIdx.asc())  # Order by itemIdx and chunkIdx
+        # )
         stmt = (
             select(Chunk)
-            .join(Item, Chunk.itemId == Item.id)  # Join Chunk -> Item
             .where(Item.projectId == projectId)  # Filter by projectId
-            .order_by(Item.itemIndex.asc(), Chunk.chunkIdx.asc())  # Order by itemIndex and chunkIdx
+            .order_by(Chunk.chunkIdx.asc())  # Order by itemIdx and chunkIdx
         )
 
         # Execute the query
         with self.get_session() as session:
             result = session.execute(stmt).scalars().all()
             return result
+
 
     def find_item(self, chunkIdx: int, projectId: int):
         """
@@ -291,7 +301,7 @@ class DatabaseUtility:
         stmt = (
             select(Item)
             .where(Item.projectId == projectId)
-            .order_by(Item.itemIndex.asc())  # Order by itemIndex in ascending order
+            .order_by(Item.itemIdx.asc())  # Order by itemIdx in ascending order
         )
 
         # Execute the query
@@ -419,26 +429,31 @@ if __name__ == "__main__":
     print(f"Project2 ID: {project2.id}")
 
     # Create dummy items
-    item = Item(name="Item One", code=101, projectId=project1.id, summary="Summary of item one", fulltext="Fulltext for item one", tags="tag1,tag2", title="Title One", itemIndex=1)
+    item = Item(name="Item One", code=101, projectId=project1.id, summary="Summary of item one", fulltext="Fulltext for item one", tags="tag1,tag2", title="Title One", itemIdx=1)
     item1 = db.insert(item)
-    item = Item(name="Item Two", code=102, projectId=project2.id, summary="Summary of item two", fulltext="Fulltext for item two", tags="tag3,tag4", title="Title Two", itemIndex=1)
+    item = Item(name="Item Two", code=102, projectId=project2.id, summary="Summary of item two", fulltext="Fulltext for item two", tags="tag3,tag4", title="Title Two", itemIdx=1)
     item2 = db.insert(item)
-    item = Item(name="Item Three", code=102, projectId=project1.id, summary="Summary of item three", fulltext="Fulltext for item three", tags="tag1,tag2", title="Title Three", itemIndex=2)
+    item = Item(name="Item Three", code=102, projectId=project1.id, summary="Summary of item three", fulltext="Fulltext for item three", tags="tag1,tag2", title="Title Three", itemIdx=2)
     item3 = db.insert(item)
 
     # Create dummy chunks
     chunkIds = []
-    chunk = Chunk(chunkIdx=1, itemId=item1.id, text="Chunk 1 text")
+    idx = 0
+    chunk = Chunk(chunkIdx=idx, chunkNum = 1, itemId=item1.id, text="Chunk 1 text")
     chunk = db.insert(chunk)
+    idx += 1
     chunkIds.append(chunk.id)
-    chunk = Chunk(chunkIdx=1, itemId=item2.id, text="Chunk 2 text")
+    chunk = Chunk(chunkIdx=idx, chunkNum = 1, itemId=item2.id, text="Chunk 2 text")
     chunk = db.insert(chunk)
+    idx += 1
     chunkIds.append(chunk.id)
-    chunk = Chunk(chunkIdx=2, itemId=item1.id, text="Chunk 3 text")
+    chunk = Chunk(chunkIdx=idx, chunkNum = 2, itemId=item1.id, text="Chunk 3 text")
     chunk = db.insert(chunk)
+    idx += 1
     chunkIds.append(chunk.id)
-    chunk = Chunk(chunkIdx=1, itemId=item3.id, text="Chunk 4 text")
+    chunk = Chunk(chunkIdx=idx, chunkNum = 1, itemId=item3.id, text="Chunk 4 text")
     chunk = db.insert(chunk)
+    idx += 1
     chunkIds.append(chunk.id)
 
     # Create dummy vectors
