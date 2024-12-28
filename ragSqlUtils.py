@@ -1,7 +1,9 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text, text, ForeignKey, LargeBinary, DateTime, MetaData, func
+from sqlalchemy import Column, Integer, String, Text
+from sqlalchemy import ForeignKey, LargeBinary, DateTime, MetaData
+from sqlalchemy import create_engine, text, func, select
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, Session
 
-from sqlalchemy import select, join
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -130,261 +132,307 @@ class TitleVector(Base):
 
 Item.title_vectors = relationship("TitleVector", order_by=TitleVector.id, back_populates="item")
 
-# Update the database connection
-def setup_database():
-    """
-    Sets up the database connection and creates all tables defined in the metadata.
 
-    This function uses SQLAlchemy to create an engine with the MySQL connection string
-    provided in the `pr.mysql` dictionary. It then creates all tables defined in the
-    `Base` metadata.
+# Database Utility Class
+class DatabaseUtility:
+    def __init__(self, connection_string):
+        """
+        Initialize the DatabaseUtility with the database connection string
+        and create all tables.
+        """
+        self.engine = create_engine(connection_string)
+        self.Session = sessionmaker(bind=self.engine, expire_on_commit=False)
+        self._initialize_tables()
 
-    Returns:
-        sqlalchemy.engine.Engine: The SQLAlchemy engine connected to the MySQL database.
-    """
-    # Replace with your MySQL connection string
-    engine = create_engine(f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}')
-    Base.metadata.create_all(engine)
-    return engine
+    def _initialize_tables(self):
+        """
+        Create all tables in the database if they do not exist.
+        """
+        Base.metadata.create_all(self.engine)
 
-# create a session
-def create_session(engine):
-    """
-    Create a new SQLAlchemy session.
-
-    Args:
-        engine (Engine): The SQLAlchemy engine to bind the session to.
-
-    Returns:
-        Session: A new SQLAlchemy session.
-    """
-    Session = sessionmaker(bind=engine)
-    return Session()
-
-
-def delete_all():
-    """
-    Deletes all data from all tables in the MySQL database and drops all tables.
-
-    This function connects to a MySQL database using SQLAlchemy, disables foreign key checks,
-    deletes all data from all tables, drops all tables, and then re-enables foreign key checks.
-
-    Note:
-        - The database connection parameters are retrieved from the `pr.mysql` dictionary.
-        - The function reflects the database schema to get the list of tables.
-        - Tables are dropped in reverse order to respect foreign key constraints.
-
-    Raises:
-        Exception: If an error occurs during the execution of SQL commands, it will be caught and printed.
-
-    """
-    engine = create_engine(f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}')
-    # Reflect the database schema
-    meta = MetaData()
-    meta.reflect(bind=engine)
-
-    # Connect to the database
-    with engine.connect() as conn:
+    @contextmanager
+    def get_session(self):
+        """
+        Context manager to provide a database session.
+        """
+        session = self.Session()
         try:
-            # Disable foreign key checks
-            conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
-
-            # Delete all data from all tables
-            # and drop all tables
-            for table in reversed(meta.sorted_tables):  # Reverse order to respect FK constraints
-                print(f"Deleting data from table: {table.name}")
-                conn.execute(table.delete())
-                conn.execute(text(f"DROP TABLE {table.name};"))
-
-            # Re-enable foreign key checks
-            conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
+            yield session
+            session.commit()
         except Exception as e:
-                    print(f"An error occurred: {e}")
+            session.rollback()
+            raise e
         finally:
-            conn.close()
+            session.close()
 
-    engine.dispose()        
+    def insert(self, obj):
+        """
+        Insert a single object into the database.
+        """
+        with self.get_session() as session:
+            session.add(obj)
+            session.flush()
+            session.refresh(obj)  # Forcefully load all attributes from the database
+            return obj
+
+    def search(self, model, filters=None, order_by=None):
+        """
+        Search for records in the database.
+        """
+        with self.get_session() as session:
+            query = session.query(model)
+            if filters:
+                query = query.filter(*filters)
+            if order_by:
+                query = query.order_by(order_by)
+            return query.all()
+
+
+    # create a session
+    def create_session(self,engine):
+        """
+        Create a new SQLAlchemy session.
+
+        Args:
+            engine (Engine): The SQLAlchemy engine to bind the session to.
+
+        Returns:
+            Session: A new SQLAlchemy session.
+        """
+        Session = sessionmaker(bind=engine)
+        return Session()
+
+            
+    def find_chunk(self, chunk_idx: int, project_id: int):
+        """
+        Find a Chunk by its index and project ID.
+
+        Args:
+            session (Session): The SQLAlchemy session to use for the query.
+            chunk_idx (int): The index of the chunk to find.
+            project_id (int): The ID of the project to which the chunk belongs.
+
+        Returns:
+            Chunk: The found Chunk object, or None if no matching chunk is found.
+        """
+        stmt = (
+            select(Chunk)
+            .join(Item, Chunk.item_id == Item.id)  # Join Chunk -> Item
+            .where(Chunk.chunkIdx == chunk_idx, Item.project_id == project_id)  # Conditions
+        )
+
+        # Execute the query
+        with self.get_session() as session:
+            result = session.execute(stmt).scalars().first()
+            return result
+
+
+    def get_chunks(self, project_id: int):
+        """
+        Get a list of all chunks for a given projectId, ordered by itemIndex and then by chunkIdx.
+
+        :param session: SQLAlchemy Session object
+        :param project_id: ID of the project
+        :return: List of Chunk objects
+        """
+        stmt = (
+            select(Chunk)
+            .join(Item, Chunk.item_id == Item.id)  # Join Chunk -> Item
+            .where(Item.project_id == project_id)  # Filter by projectId
+            .order_by(Item.itemIndex.asc(), Chunk.chunkIdx.asc())  # Order by itemIndex and chunkIdx
+        )
+
+        # Execute the query
+        with self.get_session() as session:
+            result = session.execute(stmt).scalars().all()
+            return result
+
+    def find_item(self, chunk_idx: int, project_id: int):
+        """
+        Find an Item by a chunk index and project ID.
+
+        Args:
+            session (Session): The SQLAlchemy session to use for the query.
+            chunk_idx (int): The index of the chunk to find.
+            project_id (int): The ID of the project to which the chunk belongs.
+
+        Returns:
+            Item: The found Item object, or None if no matching Item is found.
+        """
+        stmt = (
+            select(Item)
+            .join(Chunk, Chunk.item_id == Item.id)  # Join Chunk -> Item
+            .where(Chunk.chunkIdx == chunk_idx, Item.project_id == project_id)  # Conditions
+        )
+
+        # Execute the query
+        with self.get_session() as session:
+            result = session.execute(stmt).scalars().first()
+            return result
+
+
+    def get_items(self, project_id: int):
+        """
+        Get a list of all items for a given projectId, ordered by itemIdx (ascending).
+
+        :param session: SQLAlchemy Session object
+        :param project_id: ID of the project
+        :return: List of Item objects
+        """
+        stmt = (
+            select(Item)
+            .where(Item.project_id == project_id)
+            .order_by(Item.itemIndex.asc())  # Order by itemIndex in ascending order
+        )
+
+        # Execute the query
+        with self.get_session() as session:
+            result = session.execute(stmt).scalars().all()
+            return result
+
+
+    def get_item(self, name: str = None, code: int = None):
+        """
+        Get an item by name or code, where only one of the parameters is provided.
+
+        :param session: SQLAlchemy Session object
+        :param name: Name of the item (optional)
+        :param code: Code of the item (optional)
+        :return: Item object or None if not found
+        :raises ValueError: If neither or both parameters are provided
+        """
+        if not (name or code):
+            raise ValueError("Either name or code must be provided.")
+        if name and code:
+            raise ValueError("Only one of name or code must be provided, not both.")
+
+        stmt = select(Item)
+        if name:
+            stmt = stmt.where(Item.name == name)
+        elif code:
+            stmt = stmt.where(Item.code == code)
+
+        # Execute the query
+        with self.get_session() as session:
+            result = session.execute(stmt).scalars().first()
+            return result
+
+
+    def get_table_layout(self,table_name):
+        """
+        Retrieve the layout of a specific table in the database.
+
+        :param engine: SQLAlchemy Engine
+        :param table_name: Name of the table
+        :return: Dictionary with column details
+        """
+        meta = MetaData()
+        meta.reflect(bind=self.engine)
+        table = meta.tables.get(table_name)
         
-def find_chunk(session: Session, chunk_idx: int, project_id: int):
-    """
-    Find a Chunk by its index and project ID.
-
-    Args:
-        session (Session): The SQLAlchemy session to use for the query.
-        chunk_idx (int): The index of the chunk to find.
-        project_id (int): The ID of the project to which the chunk belongs.
-
-    Returns:
-        Chunk: The found Chunk object, or None if no matching chunk is found.
-    """
-    stmt = (
-        select(Chunk)
-        .join(Item, Chunk.item_id == Item.id)  # Join Chunk -> Item
-        .where(Chunk.chunkIdx == chunk_idx, Item.project_id == project_id)  # Conditions
-    )
-
-    # Execute the query
-    result = session.execute(stmt).scalars().first()
-    return result
-
-
-def get_chunks(session: Session, project_id: int):
-    """
-    Get a list of all chunks for a given projectId, ordered by itemIndex and then by chunkIdx.
-
-    :param session: SQLAlchemy Session object
-    :param project_id: ID of the project
-    :return: List of Chunk objects
-    """
-    stmt = (
-        select(Chunk)
-        .join(Item, Chunk.item_id == Item.id)  # Join Chunk -> Item
-        .where(Item.project_id == project_id)  # Filter by projectId
-        .order_by(Item.itemIndex.asc(), Chunk.chunkIdx.asc())  # Order by itemIndex and chunkIdx
-    )
-
-    # Execute the query
-    result = session.execute(stmt).scalars().all()
-    return result
-
-def find_item(session: Session, chunk_idx: int, project_id: int):
-    """
-    Find an Item by a chunk index and project ID.
-
-    Args:
-        session (Session): The SQLAlchemy session to use for the query.
-        chunk_idx (int): The index of the chunk to find.
-        project_id (int): The ID of the project to which the chunk belongs.
-
-    Returns:
-        Item: The found Item object, or None if no matching Item is found.
-    """
-    stmt = (
-        select(Item)
-        .join(Chunk, Chunk.item_id == Item.id)  # Join Chunk -> Item
-        .where(Chunk.chunkIdx == chunk_idx, Item.project_id == project_id)  # Conditions
-    )
-
-    # Execute the query
-    result = session.execute(stmt).scalars().first()
-    return result
-
-
-def get_items(session: Session, project_id: int):
-    """
-    Get a list of all items for a given projectId, ordered by itemIdx (ascending).
-
-    :param session: SQLAlchemy Session object
-    :param project_id: ID of the project
-    :return: List of Item objects
-    """
-    stmt = (
-        select(Item)
-        .where(Item.project_id == project_id)
-        .order_by(Item.itemIndex.asc())  # Order by itemIndex in ascending order
-    )
-
-    # Execute the query
-    result = session.execute(stmt).scalars().all()
-    return result
-
-
-def get_item(session: Session, name: str = None, code: int = None):
-    """
-    Get an item by name or code, where only one of the parameters is provided.
-
-    :param session: SQLAlchemy Session object
-    :param name: Name of the item (optional)
-    :param code: Code of the item (optional)
-    :return: Item object or None if not found
-    :raises ValueError: If neither or both parameters are provided
-    """
-    if not (name or code):
-        raise ValueError("Either name or code must be provided.")
-    if name and code:
-        raise ValueError("Only one of name or code must be provided, not both.")
-
-    stmt = select(Item)
-    if name:
-        stmt = stmt.where(Item.name == name)
-    elif code:
-        stmt = stmt.where(Item.code == code)
-
-    # Execute the query
-    result = session.execute(stmt).scalars().first()
-    return result
-
-
-def get_table_layout(engine, table_name):
-    """
-    Retrieve the layout of a specific table in the database.
-
-    :param engine: SQLAlchemy Engine
-    :param table_name: Name of the table
-    :return: Dictionary with column details
-    """
-    meta = MetaData()
-    meta.reflect(bind=engine)
-    table = meta.tables.get(table_name)
+        if table == None:
+            return f"Table '{table_name}' does not exist in the database."
+        
+        layout = []
+        for column in table.columns:
+            column_info = {
+                "name": column.name,
+                "type": str(column.type),
+                "nullable": column.nullable,
+                "default": column.default,
+                "primary_key": column.primary_key,
+                "unique": column.unique
+            }
+            layout.append(column_info)
+        return layout
     
-    if table == None:
-        return f"Table '{table_name}' does not exist in the database."
-    
-    layout = []
-    for column in table.columns:
-        column_info = {
-            "name": column.name,
-            "type": str(column.type),
-            "nullable": column.nullable,
-            "default": column.default,
-            "primary_key": column.primary_key,
-            "unique": column.unique
-        }
-        layout.append(column_info)
-    return layout
+    @staticmethod
+    def delete_all(connection_string):
+        """
+        Deletes all data from all tables in the MySQL database and drops all tables.
+
+        This function connects to a MySQL database using SQLAlchemy, disables foreign key checks,
+        deletes all data from all tables, drops all tables, and then re-enables foreign key checks.
+
+        Note:
+            - The database connection parameters are retrieved from the `pr.mysql` dictionary.
+            - The function reflects the database schema to get the list of tables.
+            - Tables are dropped in reverse order to respect foreign key constraints.
+
+        Raises:
+            Exception: If an error occurs during the execution of SQL commands, it will be caught and printed.
+
+        """
+        engine = create_engine(connection_string)
+        # Reflect the database schema
+        meta = MetaData()
+        meta.reflect(bind=engine)
+
+        # Connect to the database
+        with engine.connect() as conn:
+            try:
+                # Disable foreign key checks
+                conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
+
+                # Delete all data from all tables
+                # and drop all tables
+                for table in reversed(meta.sorted_tables):  # Reverse order to respect FK constraints
+                    print(f"Deleting data from table: {table.name}")
+                    conn.execute(table.delete())
+                    conn.execute(text(f"DROP TABLE {table.name};"))
+
+                # Re-enable foreign key checks
+                conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
+            except Exception as e:
+                        print(f"An error occurred: {e}")
+            finally:
+                conn.close()
+
+        engine.dispose()
 
 
 
 # Test function to populate and query dummy data
 def test_database():
-    delete_all()
-    engine = setup_database()
-    layout = get_table_layout(engine,"items")
+    connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
+    #db_util = DatabaseUtility(connection_string)
+    DatabaseUtility.delete_all(connection_string)
+    db = DatabaseUtility(connection_string)    
+
+    layout = db.get_table_layout("items")
     print(layout)
-    session = create_session(engine)
+    session = db.get_session()
 
     # Create dummy projects
-    project1 = Project(name="Project Alpha", description="Description of Project Alpha")
-    project2 = Project(name="Project Beta", description="Description of Project Beta")
-    session.add_all([project1, project2])
-    session.commit()
+    project = Project(name="Project Alpha", description="Description of Project Alpha")
+    project1 = db.insert(project)
+    print(f"Project1 ID: {project1.id}")
+    project = Project(name="Project Beta", description="Description of Project Beta")
+    project2 = db.insert(project)
+    print(f"Project2 ID: {project2.id}")
 
     # Create dummy items
-    item1 = Item(name="Item One", code=101, project_id=project1.id, summary="Summary of item one", fulltext="Fulltext for item one", tags="tag1,tag2", title="Title One", itemIndex=1)
-    item2 = Item(name="Item Two", code=102, project_id=project2.id, summary="Summary of item two", fulltext="Fulltext for item two", tags="tag3,tag4", title="Title Two", itemIndex=1)
-    item3 = Item(name="Item Three", code=102, project_id=project1.id, summary="Summary of item three", fulltext="Fulltext for item three", tags="tag1,tag2", title="Title Three", itemIndex=2)
-    session.add_all([item1, item2,item3])
-    session.commit()
+    item = Item(name="Item One", code=101, project_id=project1.id, summary="Summary of item one", fulltext="Fulltext for item one", tags="tag1,tag2", title="Title One", itemIndex=1)
+    item1 = db.insert(item)
+    item = Item(name="Item Two", code=102, project_id=project2.id, summary="Summary of item two", fulltext="Fulltext for item two", tags="tag3,tag4", title="Title Two", itemIndex=1)
+    item2 = db.insert(item)
+    item = Item(name="Item Three", code=102, project_id=project1.id, summary="Summary of item three", fulltext="Fulltext for item three", tags="tag1,tag2", title="Title Three", itemIndex=2)
+    item3 = db.insert(item)
 
     # Create dummy chunks
     chunkIds = []
     chunk = Chunk(chunkIdx=1, item_id=item1.id, text="Chunk 1 text")
-    session.add(chunk)
-    session.flush()
+    chunk = db.insert(chunk)
     chunkIds.append(chunk.id)
     chunk = Chunk(chunkIdx=1, item_id=item2.id, text="Chunk 2 text")
-    session.add(chunk)
-    session.flush()
+    chunk = db.insert(chunk)
     chunkIds.append(chunk.id)
     chunk = Chunk(chunkIdx=2, item_id=item1.id, text="Chunk 3 text")
-    session.add(chunk)
-    session.flush()
+    chunk = db.insert(chunk)
     chunkIds.append(chunk.id)
     chunk = Chunk(chunkIdx=1, item_id=item3.id, text="Chunk 4 text")
-    session.add(chunk)
-    session.flush()
+    chunk = db.insert(chunk)
     chunkIds.append(chunk.id)
-    session.commit()
 
     # Create dummy vectors
     vector = np.random.rand(384).astype('float32')
@@ -395,8 +443,8 @@ def test_database():
     binary_data = vector.tobytes()
     # Insert into the database
     vector2 = Vector(chunk_id=chunkIds[1], value=binary_data)
-    session.add_all([vector1, vector2])
-    session.commit()
+    db.insert(vector1)
+    db.insert(vector2)
     
     # Create dummy title_vectors
     vector = np.random.rand(384).astype('float32')
@@ -407,38 +455,38 @@ def test_database():
     binary_data = vector.tobytes()
     # Insert into the database
     vector2 = TitleVector(item_id=item1.id, value=binary_data)
-    session.add_all([vector1, vector2])
-    session.commit()
+    db.insert(vector1)
+    db.insert(vector2)
     
     
 
     # Query and print data
-    projects = session.query(Project).all()
+    projects = db.search(Project) #.all()
     for project in projects:
         print(f"Project: {project.name}, Description: {project.description}")
 
-    items = session.query(Item).all()
+    items = db.search(Item)
     for item in items:
         print(f"Item: {item.name}, Code: {item.code}, Tags: {item.tags}")
 
-    chunks = session.query(Chunk).all()
+    chunks = db.search(Chunk)
     for chunk in chunks:
         print(f"Chunk: {chunk.text}, Index: {chunk.chunkIdx}")
 
-    vectors = session.query(Vector).all()
+    vectors = db.search(Vector)
     for vector in vectors:
         value = np.frombuffer(vector.value, dtype='float32')
         print(f"Vector: {value[:10]}...")  # Print the first 10 characters of the vector
 
-    vectors = session.query(TitleVector).all()
+    vectors = db.search(TitleVector)
     for vector in vectors:
         value = np.frombuffer(vector.value, dtype='float32')
         print(f"TitleVector: {value[:10]}...")  # Print the first 10 characters of the vector
 
-    print(find_chunk(session, 1, 1).text)
-    print(find_item(session, 1, 1).title)
+    print(db.find_chunk(1, 1).text)
+    print(db.find_item(1, 1).title)
 
-    results  = get_chunks(session, 1)
+    results  = db.get_chunks(1)
     for chunk in results:
         print(f"Chunk, Item: {chunk.item_id}, Index: {chunk.chunkIdx}")
         #print(f"Chunk, Item: {item.id}, Index: {chunk.chunkIdx}")
