@@ -48,7 +48,7 @@ class Item(Base):
         code (int): The code associated with the item.
         projectId (int): The foreign key referencing the associated project.
         summary (str, optional): A brief summary of the item.
-        fulltext (str, optional): The full text description of the item.
+        text (str, optional): The full text description of the item.
         tags (str, optional): Tags associated with the item.
         title (str): The title of the item.
         created (datetime, optional): The creation date of the item. Defaults to the current date.
@@ -67,7 +67,7 @@ class Item(Base):
     code = Column(Integer, nullable=False)
     projectId = Column(Integer, ForeignKey('projects.id'), nullable=False)
     summary = Column(Text, nullable=True)
-    fulltext = Column(Text, nullable=True)
+    text = Column(Text, nullable=True)
     tags = Column(String(1024), nullable=True)
     title = Column(String(256), nullable=False)
     created = Column(DateTime, nullable=True, default=func.current_date())
@@ -494,11 +494,11 @@ if __name__ == "__main__":
     print(f"Project2 ID: {project2.id}")
 
     # Create dummy items
-    item = Item(name="Item One", code=101, projectId=project1.id, summary="Summary of item one", fulltext="Fulltext for item one", tags="tag1,tag2", title="Title One", itemIdx=1)
+    item = Item(name="Item One", code=101, projectId=project1.id, summary="Summary of item one", text="Fulltext for item one", tags="tag1,tag2", title="Title One", itemIdx=1)
     item1 = db.insert(item)
-    item = Item(name="Item Two", code=102, projectId=project2.id, summary="Summary of item two", fulltext="Fulltext for item two", tags="tag3,tag4", title="Title Two", itemIdx=1)
+    item = Item(name="Item Two", code=102, projectId=project2.id, summary="Summary of item two", text="Fulltext for item two", tags="tag3,tag4", title="Title Two", itemIdx=1)
     item2 = db.insert(item)
-    item = Item(name="Item Three", code=102, projectId=project1.id, summary="Summary of item three", fulltext="Fulltext for item three", tags="tag1,tag2", title="Title Three", itemIdx=2)
+    item = Item(name="Item Three", code=102, projectId=project1.id, summary="Summary of item three", text="Fulltext for item three", tags="tag1,tag2", title="Title Three", itemIdx=2)
     item3 = db.insert(item)
 
     # Create dummy chunks

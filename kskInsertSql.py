@@ -54,7 +54,7 @@ for item in summary.itertuples(index=False):
         name = f"{meta['area']}_{meta['bundle']}_{meta['topic']}",
         code = (ord(meta['area']) << 16 ) | (int(meta['bundle']) << 8) | (int(meta['topic'])),
         title = meta['title'],
-        fulltext = text
+        text = text
         ) 
     db.insert(dbItem) 
     embedding = embedder.encode(meta['title'])
