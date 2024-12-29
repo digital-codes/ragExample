@@ -101,6 +101,7 @@ class Chunk(Base):
     chunkNum = Column(Integer, nullable=False)
     itemId = Column(Integer, ForeignKey('items.id', ondelete="CASCADE"), nullable=False)
     text = Column(Text, nullable=True)
+    preview = Column(Text, nullable=True)
 
     item = relationship("Item", back_populates="chunks")
 
@@ -180,6 +181,20 @@ class DatabaseUtility:
         finally:
             session.close()
 
+    # create a session
+    def create_session(self,engine):
+        """
+        Create a new SQLAlchemy session.
+
+        Args:
+            engine (Engine): The SQLAlchemy engine to bind the session to.
+
+        Returns:
+            Session: A new SQLAlchemy session.
+        """
+        Session = sessionmaker(bind=engine)
+        return Session()
+
     def insert(self, obj):
         """
         Insert a single object into the database.
@@ -202,20 +217,38 @@ class DatabaseUtility:
                 query = query.order_by(order_by)
             return query.all()
 
-
-    # create a session
-    def create_session(self,engine):
+    def update(self, model, updated_obj):
         """
-        Create a new SQLAlchemy session.
+        Update an object in the database using the provided object.
 
-        Args:
-            engine (Engine): The SQLAlchemy engine to bind the session to.
-
-        Returns:
-            Session: A new SQLAlchemy session.
+        :param model: SQLAlchemy model class (e.g., Item, Chunk)
+        :param updated_obj: SQLAlchemy model instance with updated values. Must have a valid ID.
         """
-        Session = sessionmaker(bind=engine)
-        return Session()
+        with self.get_session() as session:
+            # Query the existing object
+            existing_obj = session.query(model).filter(model.id == updated_obj.id).first()
+            if not existing_obj:
+                raise ValueError(f"{model.__name__} with ID {updated_obj.id} not found.")
+
+            # Update fields
+            for key, value in updated_obj.__dict__.items():
+                if not key.startswith("_"):  # Skip SQLAlchemy internals
+                    setattr(existing_obj, key, value)
+
+    def delete_id(self, model, obj_id):
+        """
+        Delete an object from the database, filtering by its ID.
+
+        :param model: SQLAlchemy model class (e.g., Item, Chunk)
+        :param obj_id: The ID of the object to delete
+        """
+        with self.get_session() as session:
+            # Query the object to delete
+            obj = session.query(model).filter(model.id == obj_id).first()
+            if obj:
+                session.delete(obj)
+            else:
+                raise ValueError(f"{model.__name__} with ID {obj_id} not found.")
 
             
     def find_chunk(self, chunkIdx: int, projectId: int):
