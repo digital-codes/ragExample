@@ -234,6 +234,56 @@ class Llm:
             return None
 
     @measure_execution_time
+    def preview(self, text, size=50):
+        """
+    Makes a very compact preview of the given text using an external API.
+
+        Args:
+            text (str): The text to be summarized.
+            size (int, optional): The maximum number of words for the summary. Defaults to 50.
+
+        Returns:
+            tuple: A tuple containing the summarized text (str) and the total number of tokens used (int) if the request is successful.
+            None: If the request fails.
+
+        Raises:
+            requests.exceptions.RequestException: If there is an issue with the HTTP request.
+
+        Decorators:
+            measure_execution_time: Measures the execution time of the function.
+
+        Notes:
+            - The function sends a POST request to an external API with the provided text and other parameters.
+            - The API key and other configurations are expected to be set as instance variables.
+            - The function prints the query if DEBUG mode is enabled.
+            
+        """
+        hdrs = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+        richQuery = f"""
+        You are an intelligent assistant.
+        Make a very compact news-feed of the following {self.lang} text into {self.lang}:
+        {text}
+        Respond in {self.lang} language. Limit the repsonse to {size} {self.lang} words.
+        """
+        data = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": richQuery, "temperature": self.temperature}],
+        }
+        if DEBUG:
+            print(richQuery)
+        response = requests.post(self.url, headers=hdrs, json=data)
+        if response.status_code == 200:
+            data = response.json()
+            text = data["choices"][0]["message"]["content"].strip()
+            tokens = data["usage"]["total_tokens"]
+            return text, tokens
+        else:
+            return None
+
+    @measure_execution_time
     def translate(self, text, src="english"):
         hdrs = {
             "Content-Type": "application/json",

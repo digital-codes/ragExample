@@ -57,6 +57,8 @@ class PreProcessor():
                 chunk = f"{chunk}.{sents[idx]}".strip()
                 if len(chunk.split()) >= size:
                     if DEBUG: print(f"Chunk: {chunk},{idx}")
+                    if chunk.startswith("."):
+                        chunk = chunk[1:]
                     chunks.append(chunk)
                     chunk =  ""
                     # no idx incremtent here. overlapping chunks

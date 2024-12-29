@@ -23,7 +23,7 @@ preprocessor = textUtils.PreProcessor()
 # get models
 embedder = deployUtils.Embedder(provider="local")
 
-    
+llm = deployUtils.Llm()    
 
 # try to get summary file first
 try:
@@ -57,13 +57,21 @@ for item in summary.itertuples(index=False):
         fulltext = text
         ) 
     db.insert(dbItem) 
+    embedding = embedder.encode(meta['title'])
+    vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
+    binary_data = vector.tobytes()
+    dbTitleVector = sq.TitleVector(itemId = dbItem.id, value = binary_data)   
+    db.insert(dbTitleVector) 
+
+
     itemIdx += 1 
 
     chunks = preprocessor.chunk(text)
     for i, chunk in enumerate(chunks):
         # create item
         print(f"Processing chunk {i}")
-        dbChunk = sq.Chunk(itemId = dbItem.id, chunkNum = i, chunkIdx = chunkIdx, text = chunk)
+        preview, _ = llm.preview(chunk)
+        dbChunk = sq.Chunk(itemId = dbItem.id, chunkNum = i, chunkIdx = chunkIdx, text = chunk, preview = preview)
         db.insert(dbChunk)
         chunkIdx += 1 
         # create vector
