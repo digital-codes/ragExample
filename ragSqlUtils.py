@@ -73,6 +73,8 @@ class Item(Base):
     created = Column(DateTime, nullable=True, default=func.current_date())
     modified = Column(DateTime, nullable=True)
     url = Column(String(1024), nullable=True)
+    dataurl = Column(String(1024), nullable=True)
+    imgurl = Column(String(1024), nullable=True)
     license = Column(String(256), nullable=True)
     itemIdx = Column(Integer, nullable=False)
 
@@ -97,12 +99,12 @@ class Chunk(Base):
     id = Column(Integer, primary_key=True)
     chunkIdx = Column(Integer, nullable=False)
     chunkNum = Column(Integer, nullable=False)
-    itemId = Column(Integer, ForeignKey('items.id'), nullable=False)
+    itemId = Column(Integer, ForeignKey('items.id', ondelete="CASCADE"), nullable=False)
     text = Column(Text, nullable=True)
 
     item = relationship("Item", back_populates="chunks")
 
-Item.chunks = relationship("Chunk", order_by=Chunk.id, back_populates="item")
+Item.chunks = relationship("Chunk", order_by=Chunk.id, back_populates="item", cascade="all, delete-orphan")
 
 class Vector(Base):
     """
@@ -117,12 +119,12 @@ class Vector(Base):
     __tablename__ = 'vectors'
 
     id = Column(Integer, primary_key=True)
-    chunkId = Column(Integer, ForeignKey('chunks.id'), nullable=False)
+    chunkId = Column(Integer, ForeignKey('chunks.id', ondelete="CASCADE"), nullable=False)
     value = Column(LargeBinary, nullable=False)  # Blob
 
     chunk = relationship("Chunk", back_populates="vectors")
 
-Chunk.vectors = relationship("Vector", order_by=Vector.id, back_populates="chunk")
+Chunk.vectors = relationship("Vector", order_by=Vector.id, back_populates="chunk", cascade="all, delete-orphan")
 
 class TitleVector(Base):
     """
@@ -137,7 +139,7 @@ class TitleVector(Base):
     __tablename__ = 'title_vectors'
 
     id = Column(Integer, primary_key=True)
-    itemId = Column(Integer, ForeignKey('items.id'), nullable=False)
+    itemId = Column(Integer, ForeignKey('items.id', ondelete="CASCADE"), nullable=False)
     value = Column(LargeBinary, nullable=False)  # Blob
 
     item = relationship("Item", back_populates="title_vectors")
@@ -254,12 +256,18 @@ class DatabaseUtility:
         #     .where(Item.projectId == projectId)  # Filter by projectId
         #     .order_by(Item.itemIdx.asc(), Chunk.chunkIdx.asc())  # Order by itemIdx and chunkIdx
         # )
+        
+        # stmt = (
+        #     select(Chunk)
+        #     .where(Item.projectId == projectId)  # Filter by projectId
+        #     .order_by(Chunk.chunkIdx.asc())  # Order by itemIdx and chunkIdx
+        # )
         stmt = (
             select(Chunk)
+            .join(Item, Chunk.itemId == Item.id)  # Join Chunk with Item
             .where(Item.projectId == projectId)  # Filter by projectId
-            .order_by(Chunk.chunkIdx.asc())  # Order by itemIdx and chunkIdx
+            .order_by(Chunk.chunkIdx.asc())  # Order by chunkIdx
         )
-
         # Execute the query
         with self.get_session() as session:
             result = session.execute(stmt).scalars().all()
@@ -414,7 +422,7 @@ class DatabaseUtility:
 if __name__ == "__main__":
     connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
     #db_util = DatabaseUtility(connection_string)
-    DatabaseUtility.delete_all(connection_string)
+    # DatabaseUtility.delete_all(connection_string)
     db = DatabaseUtility(connection_string)    
 
     layout = db.get_table_layout("items")
@@ -505,8 +513,14 @@ if __name__ == "__main__":
         value = np.frombuffer(vector.value, dtype='float32')
         print(f"TitleVector: {value[:10]}...")  # Print the first 10 characters of the vector
 
-    print(db.find_chunk(1, 1).text)
-    print(db.find_item(1, 1).title)
+    c = db.find_chunk(1, 1)
+    print("No chunk" if c == None else c.text)
+    i = db.find_item(1, 1)
+    print("No item" if i == None else i.title)
+    c = db.find_chunk(1, 2)
+    print("No chunk" if c == None else c.text)
+    i = db.find_item(1, 2)
+    print("No item" if i == None else i.title)
 
     results  = db.get_chunks(1)
     for chunk in results:

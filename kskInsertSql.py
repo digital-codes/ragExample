@@ -21,7 +21,7 @@ summaryFile = "../../js/klimaDashboard/tools/ksk_summary.json"
 preprocessor = textUtils.PreProcessor()
 
 # get models
-embedder = deployUtils.Embedder()
+embedder = deployUtils.Embedder(provider="local")
 
     
 
