@@ -283,18 +283,6 @@ class DatabaseUtility:
         :param projectId: ID of the project
         :return: List of Chunk objects
         """
-        # stmt = (
-        #     select(Chunk)
-        #     .join(Item, Chunk.itemId == Item.id)  # Join Chunk -> Item
-        #     .where(Item.projectId == projectId)  # Filter by projectId
-        #     .order_by(Item.itemIdx.asc(), Chunk.chunkIdx.asc())  # Order by itemIdx and chunkIdx
-        # )
-        
-        # stmt = (
-        #     select(Chunk)
-        #     .where(Item.projectId == projectId)  # Filter by projectId
-        #     .order_by(Chunk.chunkIdx.asc())  # Order by itemIdx and chunkIdx
-        # )
         stmt = (
             select(Chunk)
             .join(Item, Chunk.itemId == Item.id)  # Join Chunk with Item
@@ -306,6 +294,42 @@ class DatabaseUtility:
             result = session.execute(stmt).scalars().all()
             return result
 
+    def get_chunk_vectors(self, projectId: int):
+        """
+        Get a list of all chunk vectors for a given projectId, ordered by chunkIdx.
+
+        :param session: SQLAlchemy Session object
+        :param projectId: ID of the project
+        :return: List of ChunkVector objects
+        """
+        chunks = self.get_chunks(projectId = projectId)
+        vectors = np.array([])
+        for c in chunks:
+            v = self.search(Vector,filters=[Vector.chunkId == c.id])
+            if len(v) != 1:
+                raise ValueError(f"Expected 1 vector for chunk {c.id}, found {len(v)}")
+            vectors = np.append(vectors,np.frombuffer(v[0].value, dtype='float32'))
+        return vectors
+        # write like:
+        # with open("chunk_vectors.vec","wb") as f:
+        #    f.write(v.astype("float32"))
+
+    def get_title_vectors(self, projectId: int):
+        """
+        Get a list of all title vectors for a given projectId, ordered by itemIdx.
+
+        :param session: SQLAlchemy Session object
+        :param projectId: ID of the project
+        :return: List of ChunkVector objects
+        """
+        items = self.get_items(projectId = projectId)
+        vectors = np.array([])
+        for i in items:
+            v = self.search(TitleVector,filters=[TitleVector.itemId == i.id])
+            if len(v) != 1:
+                raise ValueError(f"Expected 1 vector for chunk {c.id}, found {len(v)}")
+            vectors = np.append(vectors,np.frombuffer(v[0].value, dtype='float32'))
+        return vectors
 
     def find_item(self, chunkIdx: int, projectId: int):
         """
