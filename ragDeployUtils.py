@@ -114,7 +114,7 @@ class Llm:
         followChat(query, msgHistory=[], size=100):
             Continues a chat session with a follow-up query and returns the response, token usage, and updated message history.
     """
-    def __init__(self, provider: str = "deepinfra", lang="de"):
+    def __init__(self, provider: str = "deepinfra", lang="de", model=None):
         if provider == "deepinfra":
             self.api_key = pr.deepInfra["apiKey"]
             self.model = pr.deepInfra["lngMdl"]
@@ -123,6 +123,15 @@ class Llm:
             self.api_key = pr.openAi["apiKey"]
             self.model = pr.openAi["lngMdl"]
             self.url = pr.openAi["lngUrl"]
+        elif provider == "huggingface":
+            if model == None:
+                raise ValueError("Huggingface model not provided")
+            model_index = pr.huggingface["lngMdl"].index(model)
+            if model_index == -1:
+                raise ValueError("Invalid model")
+            self.api_key = pr.huggingface["apiKey"]
+            self.model = pr.huggingface["lngMdl"][model_index]
+            self.url = pr.huggingface["lngUrl"][model_index]
         else:
             raise ValueError("Invalid provider")
         self.lang = "german" if lang == "de" else "english"

@@ -28,6 +28,8 @@ import ragTextUtils as textUtils
 import ragDeployUtils as deployUtils
 from ragInstrumentation import measure_execution_time, log_query
 
+import requests
+import time
 
 DEBUG = False
 
@@ -44,6 +46,7 @@ config = {
     "llm" : None,
     "embProvider":None,
     "llmProvider":None,
+    "llmModel":None,
     "dbProvider":"zilliz"
 }
 
@@ -66,7 +69,7 @@ def initialize():
     # models
     config["embedder"] = deployUtils.Embedder(provider=config["embProvider"])
     # llm
-    config["llm"] = deployUtils.Llm(lang=config["lang"],provider=config["llmProvider"])
+    config["llm"] = deployUtils.Llm(lang=config["lang"],provider=config["llmProvider"],model=config["llmModel"])
 
 
 def checkDb():
@@ -152,8 +155,9 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--items', default = 5)      # option that takes a value
     parser.add_argument('-l', '--lang',default = "de")      # option that takes a value
     parser.add_argument('-c', '--collection',default = "ksk")      # option that takes a value
-    parser.add_argument('-e', '--embProvider',default = "deepinfra")      # option that takes a value
-    parser.add_argument('-m', '--llmProvider',default = "deepinfra")      # option that takes a value
+    parser.add_argument('-P', '--embProvider',default = "deepinfra")      # option that takes a value
+    parser.add_argument('-p', '--llmProvider',default = "deepinfra")      # option that takes a value
+    parser.add_argument('-m', '--llmModel',default = None)      # option that takes a value
     args = parser.parse_args()
     print(args.items, args.lang, args.collection) 
 
@@ -162,8 +166,21 @@ if __name__ == "__main__":
     config["dbItems"] = int(args.items)
     config["embProvider"] = args.embProvider
     config["llmProvider"] = args.llmProvider
+    config["llmModel"] = args.llmModel
     if DEBUG: print(config)
     initialize()
+
+    if config["llmProvider"] == "huggingface":
+        print("Huggingface")
+        print("Model",config["llmModel"])   
+        while True:
+            rsp = requests.get(config["llm"].url,headers={"Authorization":f"Bearer {config['llm'].api_key}"})
+            # returns 401 if wrong aki key or 503 if not ready
+            if rsp.status_code == 200: 
+                break
+            print("Not ready",rsp.status_code)
+            time.sleep(5)
+
 
     msgHistory = []
     query = input("\nEnter your query: ")
