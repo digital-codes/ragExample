@@ -175,7 +175,7 @@ if __name__ == "__main__":
         print("Model",config["llmModel"])   
         while True:
             rsp = requests.get(config["llm"].url,headers={"Authorization":f"Bearer {config['llm'].api_key}"})
-            # returns 401 if wrong aki key or 503 if not ready
+            # returns 401 if wrong api key or 503 if not ready
             if rsp.status_code == 200: 
                 break
             print("Not ready",rsp.status_code)
@@ -212,8 +212,7 @@ if __name__ == "__main__":
         if answer == None:
             print("No answer found")    
         print("Answer:", answer,tokens, files)
-        if DEBUG: print("History",msgs)
-        print("Len History",len(msgs))
+        if DEBUG: print("History","no result" if msgs == None else msgs)
         query = input("\nEnter your query: ")
 
     

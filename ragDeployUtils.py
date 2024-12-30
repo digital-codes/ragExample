@@ -5,7 +5,7 @@ from ragInstrumentation import measure_execution_time
 
 import private_remote as pr
 
-DEBUG = False
+DEBUG = True
 
 
 class Embedder:
@@ -183,7 +183,12 @@ class Llm:
             "model": self.model,
             "messages": [{"role": "user", "content": richQuery, "temperature": self.temperature}],
         }
-        response = requests.post(self.url, headers=hdrs, json=data)
+        url = self.url
+        if self.provider == "huggingface":
+            data["model"] = "tgi"
+            data["stream"] = False
+            url += "/v1/chat/completions"            
+        response = requests.post(url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
@@ -233,7 +238,12 @@ class Llm:
         }
         if DEBUG:
             print(richQuery)
-        response = requests.post(self.url, headers=hdrs, json=data)
+        url = self.url
+        if self.provider == "huggingface":
+            data["model"] = "tgi"
+            data["stream"] = False
+            url += "/v1/chat/completions"            
+        response = requests.post(url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
@@ -283,7 +293,12 @@ class Llm:
         }
         if DEBUG:
             print(richQuery)
-        response = requests.post(self.url, headers=hdrs, json=data)
+        url = self.url
+        if self.provider == "huggingface":
+            data["model"] = "tgi"
+            data["stream"] = False
+            url += "/v1/chat/completions"            
+        response = requests.post(url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
@@ -310,7 +325,12 @@ class Llm:
         }
         if DEBUG:
             print(richQuery)
-        response = requests.post(self.url, headers=hdrs, json=data)
+        url = self.url
+        if self.provider == "huggingface":
+            data["model"] = "tgi"
+            data["stream"] = False
+            url += "/v1/chat/completions"            
+        response = requests.post(url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
@@ -339,7 +359,12 @@ class Llm:
             "messages": [msg],  # msgHistory,
             "temperature": self.temperature,
         }
-        response = requests.post(self.url, headers=hdrs, json=data)
+        url = self.url
+        if self.provider == "huggingface":
+            data["model"] = "tgi"
+            data["stream"] = False
+            url += "/v1/chat/completions"            
+        response = requests.post(url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             if DEBUG:
@@ -392,7 +417,12 @@ class Llm:
             "messages": msgs,  # msgHistory,
             "temperature": self.temperature,
         }
-        response = requests.post(self.url, headers=hdrs, json=data)
+        url = self.url
+        if self.provider == "huggingface":
+            data["model"] = "tgi"
+            data["stream"] = False
+            url += "/v1/chat/completions"            
+        response = requests.post(url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             if DEBUG:
@@ -426,7 +456,12 @@ class Llm:
             "messages": msgHistory,  # msgHistory,
             "temperature": self.temperature,
         }
-        response = requests.post(self.url, headers=hdrs, json=data)
+        url = self.url
+        if self.provider == "huggingface":
+            data["model"] = "tgi"
+            data["stream"] = False
+            url += "/v1/chat/completions"            
+        response = requests.post(url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             if DEBUG:
