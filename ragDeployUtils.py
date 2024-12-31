@@ -46,6 +46,13 @@ class Embedder:
             self.model = pr.huggingface["embMdl"]
             self.url = pr.huggingface["embUrl"]
             self.engine = None
+            print("Warning: Huggingface embeddings are non-standard.")
+        elif provider == "openai":
+            self.api_key = pr.openAi["apiKey"]
+            self.model = pr.openAi["embMdl"]
+            self.url = pr.openAi["embUrl"]
+            self.engine = None
+            print("Warning: OpenAI embeddings are non-standard.")
         elif provider == "local":
             try:
                 from sentence_transformers import SentenceTransformer
@@ -89,6 +96,9 @@ class Embedder:
                 data = {"inputs": input}
             else:           
                 data = {"model": self.model, "input": input, "encoding_format": "float"}
+            if self.provider == "openai":
+                # default dims is 1536 ...
+                data["dimensions"] = 384
             response = requests.post(self.url, headers=hdrs, json=data)
             if response.status_code == 200:
                 if DEBUG: print(response.json())
