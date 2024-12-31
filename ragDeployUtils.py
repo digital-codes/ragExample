@@ -1,6 +1,7 @@
 import os
 import sys
 import requests
+import time
 from ragInstrumentation import measure_execution_time
 
 import private_remote as pr
@@ -132,6 +133,21 @@ class Llm:
             self.api_key = pr.huggingface["apiKey"]
             self.model = pr.huggingface["lngMdl"][model_index]
             self.url = pr.huggingface["lngUrl"][model_index]
+            # need to check endpoint availability
+            testUrl = self.url.split("/v1")[0]
+            while True:
+                rsp = requests.get(testUrl,headers={"Authorization":f"Bearer {self.api_key}"})
+                # returns 401 if wrong api key or 503 if not ready
+                if rsp.status_code == 200: 
+                    if DEBUG: print("Huggingface Ready")
+                    break
+                elif rsp.status_code == 401:
+                    raise ValueError("Huggingface Unauthorized")
+                elif rsp.status_code == 503:
+                    print("Huggingface Not ready",rsp.status_code)
+                    time.sleep(5)
+                else:
+                    raise ValueError("Unknown Huggingface error:", rsp.status_code)
         else:
             raise ValueError("Invalid provider")
         self.lang = "german" if lang == "de" else "english"
@@ -183,12 +199,10 @@ class Llm:
             "model": self.model,
             "messages": [{"role": "user", "content": richQuery, "temperature": self.temperature}],
         }
-        url = self.url
         if self.provider == "huggingface":
             data["model"] = "tgi"
             data["stream"] = False
-            url += "/v1/chat/completions"            
-        response = requests.post(url, headers=hdrs, json=data)
+        response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
@@ -238,12 +252,10 @@ class Llm:
         }
         if DEBUG:
             print(richQuery)
-        url = self.url
         if self.provider == "huggingface":
             data["model"] = "tgi"
             data["stream"] = False
-            url += "/v1/chat/completions"            
-        response = requests.post(url, headers=hdrs, json=data)
+        response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
@@ -293,12 +305,10 @@ class Llm:
         }
         if DEBUG:
             print(richQuery)
-        url = self.url
         if self.provider == "huggingface":
             data["model"] = "tgi"
             data["stream"] = False
-            url += "/v1/chat/completions"            
-        response = requests.post(url, headers=hdrs, json=data)
+        response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
@@ -325,12 +335,10 @@ class Llm:
         }
         if DEBUG:
             print(richQuery)
-        url = self.url
         if self.provider == "huggingface":
             data["model"] = "tgi"
             data["stream"] = False
-            url += "/v1/chat/completions"            
-        response = requests.post(url, headers=hdrs, json=data)
+        response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
@@ -359,12 +367,10 @@ class Llm:
             "messages": [msg],  # msgHistory,
             "temperature": self.temperature,
         }
-        url = self.url
         if self.provider == "huggingface":
             data["model"] = "tgi"
             data["stream"] = False
-            url += "/v1/chat/completions"            
-        response = requests.post(url, headers=hdrs, json=data)
+        response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             if DEBUG:
@@ -379,6 +385,9 @@ class Llm:
             print("LLM failed:",response.status_code)
             return None, None
 
+    # Note: huggings face does not allow multiple system roles. 
+    # First one is optional, then alternate between user and assistant
+
     @measure_execution_time
     def initChat(self, context, query, size=100):
         hdrs = {
@@ -388,16 +397,11 @@ class Llm:
         msgs = []
         msgs.append({
             "role": "system", 
-            "content": """
-                You are an expert assistant designed to provide detailed and accurate responses 
+            "content": """You are an expert assistant designed to provide detailed and accurate responses 
                 based on user queries and retrieved context. 
                 If the retrieved context is insufficient or ambiguous, 
-                ask for clarification or provide a logical extrapolation."
-            """
-                })
-        msgs.append({
-            "role": "system", 
-            "content": f"""
+                ask for clarification or provide a logical extrapolation."""
+                + f"""
                 Context in {self.lang}:\n
                 {context}
                 """
@@ -417,12 +421,12 @@ class Llm:
             "messages": msgs,  # msgHistory,
             "temperature": self.temperature,
         }
-        url = self.url
         if self.provider == "huggingface":
             data["model"] = "tgi"
             data["stream"] = False
-            url += "/v1/chat/completions"            
-        response = requests.post(url, headers=hdrs, json=data)
+        if DEBUG:
+            print(data)
+        response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             if DEBUG:
@@ -456,12 +460,10 @@ class Llm:
             "messages": msgHistory,  # msgHistory,
             "temperature": self.temperature,
         }
-        url = self.url
         if self.provider == "huggingface":
             data["model"] = "tgi"
             data["stream"] = False
-            url += "/v1/chat/completions"            
-        response = requests.post(url, headers=hdrs, json=data)
+        response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
             data = response.json()
             if DEBUG:

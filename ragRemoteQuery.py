@@ -170,18 +170,6 @@ if __name__ == "__main__":
     if DEBUG: print(config)
     initialize()
 
-    if config["llmProvider"] == "huggingface":
-        print("Huggingface")
-        print("Model",config["llmModel"])   
-        while True:
-            rsp = requests.get(config["llm"].url,headers={"Authorization":f"Bearer {config['llm'].api_key}"})
-            # returns 401 if wrong api key or 503 if not ready
-            if rsp.status_code == 200: 
-                break
-            print("Not ready",rsp.status_code)
-            time.sleep(5)
-
-
     msgHistory = []
     query = input("\nEnter your query: ")
     followUp = False
