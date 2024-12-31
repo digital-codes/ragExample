@@ -131,7 +131,11 @@ class Llm:
             if model_index == -1:
                 raise ValueError("Invalid model")
             self.api_key = pr.huggingface["apiKey"]
-            self.model = pr.huggingface["lngMdl"][model_index]
+            # dedicated endpoints use different model name
+            if pr.huggingface["endpoint"][model_index] == "dedicated":
+                self.model = "tgi"        
+            else:
+                self.model = pr.huggingface["lngMdl"][model_index]
             self.url = pr.huggingface["lngUrl"][model_index]
             # need to check endpoint availability
             testUrl = self.url.split("/v1")[0]
@@ -200,7 +204,6 @@ class Llm:
             "messages": [{"role": "user", "content": richQuery, "temperature": self.temperature}],
         }
         if self.provider == "huggingface":
-            data["model"] = "tgi"
             data["stream"] = False
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
@@ -253,7 +256,6 @@ class Llm:
         if DEBUG:
             print(richQuery)
         if self.provider == "huggingface":
-            data["model"] = "tgi"
             data["stream"] = False
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
@@ -306,7 +308,6 @@ class Llm:
         if DEBUG:
             print(richQuery)
         if self.provider == "huggingface":
-            data["model"] = "tgi"
             data["stream"] = False
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
@@ -336,7 +337,6 @@ class Llm:
         if DEBUG:
             print(richQuery)
         if self.provider == "huggingface":
-            data["model"] = "tgi"
             data["stream"] = False
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
@@ -368,7 +368,6 @@ class Llm:
             "temperature": self.temperature,
         }
         if self.provider == "huggingface":
-            data["model"] = "tgi"
             data["stream"] = False
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
@@ -422,7 +421,6 @@ class Llm:
             "temperature": self.temperature,
         }
         if self.provider == "huggingface":
-            data["model"] = "tgi"
             data["stream"] = False
         if DEBUG:
             print(data)
@@ -461,7 +459,6 @@ class Llm:
             "temperature": self.temperature,
         }
         if self.provider == "huggingface":
-            data["model"] = "tgi"
             data["stream"] = False
         response = requests.post(self.url, headers=hdrs, json=data)
         if response.status_code == 200:
