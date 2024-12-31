@@ -6,7 +6,7 @@ from ragInstrumentation import measure_execution_time
 
 import private_remote as pr
 
-DEBUG = True
+DEBUG = False
 
 
 class Embedder:
