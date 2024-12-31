@@ -41,6 +41,11 @@ class Embedder:
             self.model = pr.deepInfra["embMdl"]
             self.url = pr.deepInfra["embUrl"]
             self.engine = None
+        elif provider == "huggingface":
+            self.api_key = pr.huggingface["apiKey"]
+            self.model = pr.huggingface["embMdl"]
+            self.url = pr.huggingface["embUrl"]
+            self.engine = None
         elif provider == "local":
             try:
                 from sentence_transformers import SentenceTransformer
@@ -52,6 +57,7 @@ class Embedder:
                 raise ValueError("Error: Please install sentence_transformers")
         else:
             raise ValueError("Invalid provider")
+        self.provider = provider
 
     @measure_execution_time
     def encode(self, input):
@@ -79,11 +85,21 @@ class Embedder:
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            data = {"model": self.model, "input": input, "encoding_format": "float"}
+            if self.provider == "huggingface":
+                data = {"inputs": input}
+            else:           
+                data = {"model": self.model, "input": input, "encoding_format": "float"}
             response = requests.post(self.url, headers=hdrs, json=data)
             if response.status_code == 200:
-                return response.json()
+                if DEBUG: print(response.json())
+                if self.provider == "huggingface":
+                    # plain vector
+                    embedding = response.json()
+                    return {"data":[{"embedding":embedding}]}
+                else:  
+                    return response.json()
             else:
+                print("Encode error:",response.status_code)
                 return None
 
 
