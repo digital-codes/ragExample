@@ -53,6 +53,10 @@ class Embedder:
             self.url = pr.openAi["embUrl"]
             self.engine = None
             print("Warning: OpenAI embeddings are non-standard.")
+        elif provider == "localllama":
+            self.api_key = pr.localllama["apiKey"]
+            self.model = pr.localllama["embMdl"]
+            self.url = pr.localllama["embUrl"]
         elif provider == "local":
             try:
                 from sentence_transformers import SentenceTransformer
@@ -150,6 +154,10 @@ class Llm:
             self.api_key = pr.openAi["apiKey"]
             self.model = pr.openAi["lngMdl"]
             self.url = pr.openAi["lngUrl"]
+        elif provider == "localllama":
+            self.api_key = pr.localllama["apiKey"]
+            self.model = pr.localllama["lngMdl"]
+            self.url = pr.localllama["lngUrl"]
         elif provider == "huggingface":
             if model == None:
                 raise ValueError("Huggingface model not provided")
