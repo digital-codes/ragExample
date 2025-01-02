@@ -189,7 +189,7 @@ if __name__ == "__main__":
             context = ""
             followUp = True
             for r in results:
-                context = "\n".join([f"{r[0].split("_chunk")[0]}:{r[1]}",r[2],context])
+                context = "\n".join([f"{r[0].split('_chunk')[0]}:{r[1]}",r[2],context])
             if DEBUG: print(context)
             answer, tokens, msgs = initQuery(context, query)
         else:
