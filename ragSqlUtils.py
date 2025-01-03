@@ -303,11 +303,13 @@ class DatabaseUtility:
         :return: List of ChunkVector objects
         """
         chunks = self.get_chunks(projectId = projectId)
-        vectors = np.array([])
+        vectors = np.array([], dtype='float32')
         for c in chunks:
             v = self.search(Vector,filters=[Vector.chunkId == c.id])
             if len(v) != 1:
                 raise ValueError(f"Expected 1 vector for chunk {c.id}, found {len(v)}")
+            print(len(v[0].value))
+            #assert len(v[0].value) == 384 * 4
             vectors = np.append(vectors,np.frombuffer(v[0].value, dtype='float32'))
         return vectors
         # write like:
@@ -323,7 +325,7 @@ class DatabaseUtility:
         :return: List of ChunkVector objects
         """
         items = self.get_items(projectId = projectId)
-        vectors = np.array([])
+        vectors = np.array([], dtype='float32')
         for i in items:
             v = self.search(TitleVector,filters=[TitleVector.itemId == i.id])
             if len(v) != 1:

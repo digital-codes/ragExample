@@ -36,6 +36,7 @@ class Embedder:
     """
     @measure_execution_time
     def __init__(self, provider: str = "deepinfra"):
+        self.size = 384 # default size for all models
         if provider == "deepinfra":
             self.api_key = pr.deepInfra["apiKey"]
             self.model = pr.deepInfra["embMdl"]

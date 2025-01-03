@@ -59,7 +59,9 @@ for item in summary.itertuples(index=False):
     db.insert(dbItem) 
     embedding = embedder.encode(meta['title'])
     vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
+    assert len(vector) == embedder.size
     binary_data = vector.tobytes()
+    assert len(binary_data) == embedder.size * np.dtype(np.float32).itemsize 
     dbTitleVector = sq.TitleVector(itemId = dbItem.id, value = binary_data)   
     db.insert(dbTitleVector) 
 
@@ -77,7 +79,9 @@ for item in summary.itertuples(index=False):
         # create vector
         embedding = embedder.encode(chunk)
         vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
+        assert len(vector) == embedder.size
         binary_data = vector.tobytes()
+        assert len(binary_data) == embedder.size * np.dtype(np.float32).itemsize 
         dbVector = sq.Vector(chunkId = dbChunk.id, value = binary_data)   
         db.insert(dbVector) 
                 
