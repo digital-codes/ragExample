@@ -169,5 +169,5 @@ lib
 lib64
 share
 include
-pyenv.cfg
+pyvenv.cfg
 data
