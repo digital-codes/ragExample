@@ -28,7 +28,6 @@ except FileExistsError:
 
 # chunks
 v = db.get_chunk_vectors(prId)
-exit()
 fn = os.sep.join([path,f"chunk_{base}"])
 with open (fn,"wb") as f:
     size = f.write(v.astype("float32"))

@@ -36,7 +36,7 @@ class Embedder:
     """
     @measure_execution_time
     def __init__(self, provider: str = "deepinfra"):
-        self.size = 384 # default size for all models
+        self.size = Embedder.get_size() #384 # default size for all models
         if provider == "deepinfra":
             self.api_key = pr.deepInfra["apiKey"]
             self.model = pr.deepInfra["embMdl"]
@@ -70,6 +70,14 @@ class Embedder:
         else:
             raise ValueError("Invalid provider")
         self.provider = provider
+
+    @staticmethod
+    def get_size():
+        """
+        Returns:
+            int: The size of the embedding vectors.
+        """
+        return 384
 
     @measure_execution_time
     def encode(self, input):
