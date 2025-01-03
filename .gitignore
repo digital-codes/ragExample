@@ -163,3 +163,11 @@ cython_debug/
 
 private*.py
 
+# pyenv stuff
+bin
+lib
+lib64
+share
+include
+pyenv.cfg
+data
