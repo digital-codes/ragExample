@@ -1,0 +1,17 @@
+1. Use --hex-blob with mysqldump
+
+The --hex-blob option ensures that BLOB and BINARY data are dumped as hexadecimal strings instead of trying to encode them as text.
+Example:
+mysqldump --hex-blob -u user -p dbname > backup.sql
+
+2. Restore with Proper Charset
+Use the correct character set when restoring the dump file to avoid misinterpreting binary data:
+Example:
+mysql --default-character-set=utf8mb4 -u user -p dbname < backup.sql
+
+3. Identify Corrupted Data
+Check the length of all rows in the value column:
+SELECT id, OCTET_LENGTH(value) AS data_length FROM title_vectors;
+
+
+
