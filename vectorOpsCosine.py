@@ -9,19 +9,6 @@ from joblib import Parallel, delayed
 # set TOKENIZERS_PARALLELISM to False before running
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# numba optional 
-try:
-    from numba import njit, prange, set_num_threads
-    useNumba = True
-except:
-    useNumba = False
-    # fake decorator function   
-    def njit(*args, **kwargs):
-        def wrapper(func):
-            return func
-        return wrapper
-
-
 DIM = 384
 DEBUG = False
 
@@ -52,53 +39,6 @@ def load_vectors(filename):
     
     return arr_normalized
 
-
-#########################
-@njit(parallel=True)
-def batch_cosine_similarities(query, vectors):
-    """
-    Compute the cosine similarity between a single 'query' vector 
-    and each row in 'vectors' in parallel.
-
-    :param query:   1D array of shape (D,)
-    :param vectors: 2D array of shape (N, D)
-    :return:        1D array of length N, where result[i] is the 
-                    cosine similarity between query and vectors[i].
-    """
-    N = vectors.shape[0]
-    D = vectors.shape[1]
-    
-    # Precompute norm of query
-    norm_q = 0.0
-    for i in range(D):
-        norm_q += query[i] * query[i]
-    norm_q = np.sqrt(norm_q)
-
-    # Prepare an array to store all similarities
-    sims = np.empty(N, dtype=np.float32)
-    
-    for i in prange(N):
-        # Dot product and norm of the i-th vector
-        dp = 0.0
-        norm_v = 0.0
-        for j in range(D):
-            val = vectors[i, j]
-            dp += query[j] * val
-            norm_v += val * val
-        
-        denom = (norm_q * np.sqrt(norm_v)) + 1e-9
-        sims[i] = dp / denom
-
-    return sims
-
-def sort_similarities_descending(sims: np.ndarray):
-    """
-    Sort similarities (1D array) in descending order. Return 
-    (sorted_sims, sorted_indices).
-    """
-    sorted_indices = np.argsort(sims)[::-1]
-    sorted_sims = sims[sorted_indices]
-    return sorted_sims, sorted_indices
 
 #########################
 def compute_cosine_similarity(query: np.ndarray, doc: np.ndarray) -> float:
@@ -164,6 +104,7 @@ if __name__ == "__main__":
     parser.add_argument('-c', '--command',choices=["search","text"])      # option that takes a value
     parser.add_argument('-v', '--vectors', default="vectors.bin")      # option that takes a value
     parser.add_argument('-q', '--query')      # option that takes a value
+    parser.add_argument('-i', '--items', type=int, default=5)      # option that takes a value
     args = parser.parse_args()
 
     if args.command == "search":
@@ -178,8 +119,7 @@ if __name__ == "__main__":
             exit(1)
         query = json.loads(args.query)
         query_vec = np.array(query, dtype=np.float32).reshape(1, DIM)
-        k = 5
-        result, dists = query_vectors(vectors,query_vec[0], k)
+        result, dists = query_vectors(vectors,query_vec[0], args.items)
         print("NN indices:", result)
         print("NN distances:", dists)
     elif args.command == "text":
@@ -201,14 +141,9 @@ if __name__ == "__main__":
             embedder = rag.Embedder()
         query = embedder.encode(query_text)["data"][0]["embedding"]
         query_vec = np.array(query, dtype=np.float32).reshape(1, DIM)
-        k = 5
-        result, dists = query_vectors(vectors,query_vec[0], k)
+        result, dists = query_vectors(vectors,query_vec[0], args.items)
         print("NN indices:", result)
         print("NN distances:", dists)
-        if useNumba:
-            result, dists = query_vectors2(vectors,query_vec[0])
-            print("NN indices:", result)
-            print("NN distances:", dists)
     else:
         parser.print_help()
         exit(1)
