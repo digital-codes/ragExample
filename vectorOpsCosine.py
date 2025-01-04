@@ -88,15 +88,52 @@ def query_vectors(vectors, query, num_neighbors=5, data=None):
     return indices[:num_neighbors], distances[:num_neighbors]
 
 @measure_execution_time
-def query_vectors2(vectors, query, num_neighbors=5, data=None):
-    query_norm = np.linalg.norm(query) + 1e-9
-    query_normalized = query / query_norm
+def get_top_n_dedup(similarities, indices, identifiers, top_n):
+    """
+    We have similarities sorted descending, plus matching indices.
+    We walk through them in descending similarity order. For each doc_id,
+    the *first* time we see it, that is its best (maximum) similarity.
+    
+    We keep track of unique doc_ids. Once we reach 'top_n' unique doc_ids,
+    we break and return our results.
+    
+    :param similarities: 1D array (descending) of shape (M,)
+    :param indices:      1D array of shape (M,), matching 'similarities'
+    :param identifiers:  array or function mapping row index -> doc_id
+    :param top_n:        how many unique doc_ids we want to collect
+    
+    :return: A list of (doc_id, similarity) of length <= top_n,
+             in descending similarity order.
+    """
+    deduped_ids = set()
+    results = []
+    
+    count_unique = 0
+    for i in range(len(similarities)):
+        sim = similarities[i]
+        idx = indices[i]
+        doc_id = identifiers[idx]  # e.g. if identifiers is a numpy array or dict
+        
+        # If we've not seen this doc_id yet, this is its best similarity
+        if doc_id not in deduped_ids:
+            deduped_ids.add(doc_id)
+            results.append((doc_id, sim))
+            count_unique += 1
+            
+            # If we've reached top_n unique doc_ids, we can stop
+            if count_unique >= top_n:
+                break
+    
+    # 'results' is already in descending similarity order
+    return results
 
-    set_num_threads(8)  # Use 8 threads
-    dists = batch_cosine_similarities(query_normalized, vectors)
-    distances, indices = sort_similarities_descending(dists)
-   
-    return indices[:num_neighbors], distances[:num_neighbors]
+    # # We want the top 5 unique doc_ids
+    # top_n = 5
+    # dedup_results = single_pass_top_n_dedup(similarities, indices, identifiers, top_n)
+    
+    # print(f"Found {len(dedup_results)} unique doc_ids (up to {top_n}):")
+    # for doc_id, sim in dedup_results:
+    #     print(f"doc_id={doc_id}, similarity={sim:.2f}")
 
 
 if __name__ == "__main__":

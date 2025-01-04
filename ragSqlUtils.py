@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text
-from sqlalchemy import ForeignKey, LargeBinary, DateTime, MetaData
+from sqlalchemy import Column, Integer, String, Text, Table
+from sqlalchemy import ForeignKey, LargeBinary, DateTime, MetaData, CheckConstraint
 from sqlalchemy import create_engine, text, func, select
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, Session
 
@@ -21,7 +21,9 @@ class Project(Base):
         id (int): The primary key of the project.
         name (str): The name of the project. Cannot be null. Unique
         description (str): A textual description of the project. Can be null.
-        lang (str): The language of the project. Defaults to 'en'.
+        langs (str): List of the languages of the project. Defaults to 'de,en'.
+        embedModel (str): The name of the embedder model. Cannot be null.
+        embedSize (int: The size of the embedder model. Cannot be null. 
         vectorName (str): The name of the vector associated with the project. Cannot be null.
         vectorPath (str): The file path to the vector associated with the project. Cannot be null.
         indexName (str): The name of the index associated with the project. Can be null, then brute-force comparisons of vectors.
@@ -32,11 +34,41 @@ class Project(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(256), unique=True, nullable=False)
     description = Column(Text, nullable=True)
-    lang = Column(String(2), nullable=False, default="en")
+    langs = Column(String(256), nullable=False, default="de,en")
+    embedModel = Column(String(256), nullable=False, default="all-minilm-l12-v2")
+    embedSize = Column(Integer, nullable=False,default = 384)
     vectorName = Column(String(256), nullable=False)
     vectorPath = Column(String(1024), nullable=False)
     indexName = Column(String(256), nullable=True)
     indexPath = Column(String(1024), nullable=True)
+    
+     __table_args__ = (
+        CheckConstraint('id = 1', name='check_id_equals_1'),  # CHECK constraint
+    )
+
+
+
+# Junction table for items and tags
+item_tags = Table(
+    'item_tags',
+    Base.metadata,
+    Column('item_id', Integer, ForeignKey('items.id', ondelete='CASCADE'), primary_key=True),
+    Column('tag_id', Integer, ForeignKey('tags.id', ondelete='CASCADE'), primary_key=True)
+)
+
+class Tag(Base):
+    """
+    Represents a tag in the database.
+
+    Attributes:
+        id (int): The primary key of the item.
+        name (str): The unique name of the item.
+    """
+    __tablename__ = 'tags'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(256), unique=True, nullable=False)
+
 
 class Item(Base):
     """
@@ -45,12 +77,9 @@ class Item(Base):
     Attributes:
         id (int): The primary key of the item.
         name (str): The unique name of the item.
-        code (int): The code associated with the item.
-        projectId (int): The foreign key referencing the associated project.
-        summary (str, optional): A brief summary of the item.
-        text (str, optional): The full text description of the item.
-        tags (str, optional): Tags associated with the item.
-        title (str): The title of the item.
+        summary_<lang> (str, optional): A brief summary of the item.
+        text_<lang> (str, optional): The full text description of the item.
+        title_<lang> (str): The title of the item.
         created (datetime, optional): The creation date of the item. Defaults to the current date.
         modified (datetime, optional): The last modified date of the item.
         url (str, optional): The URL associated with the item.
@@ -64,12 +93,12 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(256), unique=True, nullable=False)
-    code = Column(Integer, nullable=False)
-    projectId = Column(Integer, ForeignKey('projects.id'), nullable=False)
-    summary = Column(Text, nullable=True)
-    text = Column(Text, nullable=True)
-    tags = Column(String(1024), nullable=True)
-    title = Column(String(256), nullable=False)
+    summary_de = Column(Text, nullable=True)
+    summary_en = Column(Text, nullable=True)
+    text_de = Column(Text, nullable=True)
+    text_en = Column(Text, nullable=True)
+    title_de = Column(String(256), nullable=False)
+    title_en = Column(String(256), nullable=False)
     created = Column(DateTime, nullable=True, default=func.current_date())
     modified = Column(DateTime, nullable=True)
     url = Column(String(1024), nullable=True)
@@ -78,9 +107,6 @@ class Item(Base):
     license = Column(String(256), nullable=True)
     itemIdx = Column(Integer, nullable=False)
 
-    project = relationship("Project", back_populates="items")
-
-Project.items = relationship("Item", order_by=Item.id, back_populates="project")
 
 class Chunk(Base):
     """
@@ -91,7 +117,8 @@ class Chunk(Base):
         chunkNum (int): Number of the chunk within item
         chunkIdx (int): Index of the chunk in project. Matches vector index.
         itemId (int): Foreign key referencing the associated item.
-        text (str): The text content of the chunk.
+        text_<lang> (str): The text content of the chunk.
+        preview_<lang> (str): The text content of the chunk.
         item (Item): Relationship to the Item model, back_populated by 'chunks'.
     """
     __tablename__ = 'chunks'
@@ -100,8 +127,10 @@ class Chunk(Base):
     chunkIdx = Column(Integer, nullable=False)
     chunkNum = Column(Integer, nullable=False)
     itemId = Column(Integer, ForeignKey('items.id', ondelete="CASCADE"), nullable=False)
-    text = Column(Text, nullable=True)
-    preview = Column(Text, nullable=True)
+    text_de = Column(Text, nullable=True)
+    text_en = Column(Text, nullable=True)
+    preview_de = Column(Text, nullable=True)
+    preview_en = Column(Text, nullable=True)
 
     item = relationship("Item", back_populates="chunks")
 
@@ -114,14 +143,15 @@ class Vector(Base):
     Attributes:
         id (int): The primary key of the vector.
         chunkId (int): The foreign key referencing the associated chunk.
-        value (bytes): The binary data representing the vector.
+        value_<lang> (bytes): The binary data representing the vector.
         chunk (Chunk): The relationship to the Chunk model, back_populated by "vectors".
     """
     __tablename__ = 'vectors'
 
     id = Column(Integer, primary_key=True)
     chunkId = Column(Integer, ForeignKey('chunks.id', ondelete="CASCADE"), nullable=False)
-    value = Column(LargeBinary, nullable=False)  # Blob
+    value_de = Column(LargeBinary, nullable=False)  # Blob
+    value_en = Column(LargeBinary, nullable=False)  # Blob
 
     chunk = relationship("Chunk", back_populates="vectors")
 
@@ -134,14 +164,15 @@ class TitleVector(Base):
     Attributes:
         id (int): Primary key of the table.
         itemId (int): Foreign key referencing the 'items' table.
-        value (LargeBinary): Blob data representing the vector value.
+        value_<lang> (LargeBinary): Blob data representing the vector value.
         item (relationship): Relationship to the Item model, back_populated by 'title_vectors'.
     """
     __tablename__ = 'title_vectors'
 
     id = Column(Integer, primary_key=True)
     itemId = Column(Integer, ForeignKey('items.id', ondelete="CASCADE"), nullable=False)
-    value = Column(LargeBinary, nullable=False)  # Blob
+    value_de = Column(LargeBinary, nullable=False)  # Blob
+    value_en = Column(LargeBinary, nullable=False)  # Blob
 
     item = relationship("Item", back_populates="title_vectors")
 
@@ -294,12 +325,11 @@ class DatabaseUtility:
             result = session.execute(stmt).scalars().all()
             return result
 
-    def get_chunk_vectors(self, projectId: int):
+    def get_chunk_vectors(self):
         """
         Get a list of all chunk vectors for a given projectId, ordered by chunkIdx.
 
         :param session: SQLAlchemy Session object
-        :param projectId: ID of the project
         :return: List of ChunkVector objects
         """
         chunks = self.get_chunks(projectId = projectId)
@@ -314,12 +344,11 @@ class DatabaseUtility:
         # with open("chunk_vectors.vec","wb") as f:
         #    f.write(v.astype("float32"))
 
-    def get_title_vectors(self, projectId: int):
+    def get_title_vectors(self):
         """
         Get a list of all title vectors for a given projectId, ordered by itemIdx.
 
         :param session: SQLAlchemy Session object
-        :param projectId: ID of the project
         :return: List of ChunkVector objects
         """
         items = self.get_items(projectId = projectId)
@@ -331,14 +360,13 @@ class DatabaseUtility:
             vectors = np.append(vectors,np.frombuffer(v[0].value, dtype='float32'))
         return vectors
 
-    def find_item(self, chunkIdx: int, projectId: int):
+    def find_item(self, chunkIdx: int):
         """
         Find an Item by a chunk index and project ID.
 
         Args:
             session (Session): The SQLAlchemy session to use for the query.
             chunkIdx (int): The index of the chunk to find.
-            projectId (int): The ID of the project to which the chunk belongs.
 
         Returns:
             Item: The found Item object, or None if no matching Item is found.
@@ -346,7 +374,7 @@ class DatabaseUtility:
         stmt = (
             select(Item)
             .join(Chunk, Chunk.itemId == Item.id)  # Join Chunk -> Item
-            .where(Chunk.chunkIdx == chunkIdx, Item.projectId == projectId)  # Conditions
+            .where(Chunk.chunkIdx == chunkIdx)  # Conditions
         )
 
         # Execute the query
@@ -355,17 +383,15 @@ class DatabaseUtility:
             return result
 
 
-    def get_items(self, projectId: int):
+    def get_items(self):
         """
-        Get a list of all items for a given projectId, ordered by itemIdx (ascending).
+        Get a list of all items, ordered by itemIdx (ascending).
 
         :param session: SQLAlchemy Session object
-        :param projectId: ID of the project
         :return: List of Item objects
         """
         stmt = (
             select(Item)
-            .where(Item.projectId == projectId)
             .order_by(Item.itemIdx.asc())  # Order by itemIdx in ascending order
         )
 
@@ -375,26 +401,20 @@ class DatabaseUtility:
             return result
 
 
-    def get_item(self, name: str = None, code: int = None):
+    def get_item(self, name: str = None):
         """
         Get an item by name or code, where only one of the parameters is provided.
 
         :param session: SQLAlchemy Session object
         :param name: Name of the item (optional)
-        :param code: Code of the item (optional)
         :return: Item object or None if not found
         :raises ValueError: If neither or both parameters are provided
         """
-        if not (name or code):
-            raise ValueError("Either name or code must be provided.")
-        if name and code:
-            raise ValueError("Only one of name or code must be provided, not both.")
+        if not name:
+            raise ValueError("Namemust be provided.")
 
         stmt = select(Item)
-        if name:
-            stmt = stmt.where(Item.name == name)
-        elif code:
-            stmt = stmt.where(Item.code == code)
+        stmt = stmt.where(Item.name == name)
 
         # Execute the query
         with self.get_session() as session:
