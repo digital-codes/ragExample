@@ -169,7 +169,6 @@ def validate_language(mapper, connection, target):
     """
     Validate that the language of the text is in the project's allowed languages using FIND_IN_SET.
     """
-    print(f"Snippet: {target.lang}",connection)
     # Use FIND_IN_SET to check if the language is allowed
     query = text(f"""
         SELECT FIND_IN_SET('{target.lang}', langs) > 0
