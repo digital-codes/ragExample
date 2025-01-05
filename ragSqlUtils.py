@@ -31,7 +31,7 @@ class Project(Base):
     """
     __tablename__ = 'projects'
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=False, default = 1)
     name = Column(String(256), unique=True, nullable=False)
     description = Column(Text, nullable=True)
     langs = Column(String(256), nullable=False, default="de,en")
@@ -42,7 +42,7 @@ class Project(Base):
     indexName = Column(String(256), nullable=True)
     indexPath = Column(String(1024), nullable=True)
     
-     __table_args__ = (
+    __table_args__ = (
         CheckConstraint('id = 1', name='check_id_equals_1'),  # CHECK constraint
     )
 
@@ -93,12 +93,6 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(256), unique=True, nullable=False)
-    summary_de = Column(Text, nullable=True)
-    summary_en = Column(Text, nullable=True)
-    text_de = Column(Text, nullable=True)
-    text_en = Column(Text, nullable=True)
-    title_de = Column(String(256), nullable=False)
-    title_en = Column(String(256), nullable=False)
     created = Column(DateTime, nullable=True, default=func.current_date())
     modified = Column(DateTime, nullable=True)
     url = Column(String(1024), nullable=True)
@@ -107,34 +101,59 @@ class Item(Base):
     license = Column(String(256), nullable=True)
     itemIdx = Column(Integer, nullable=False)
 
-
 class Chunk(Base):
     """
     Represents a chunk of text associated with an item.
 
     Attributes:
         id (int): Primary key of the chunk.
-        chunkNum (int): Number of the chunk within item
         chunkIdx (int): Index of the chunk in project. Matches vector index.
         itemId (int): Foreign key referencing the associated item.
-        text_<lang> (str): The text content of the chunk.
-        preview_<lang> (str): The text content of the chunk.
         item (Item): Relationship to the Item model, back_populated by 'chunks'.
     """
     __tablename__ = 'chunks'
 
     id = Column(Integer, primary_key=True)
     chunkIdx = Column(Integer, nullable=False)
-    chunkNum = Column(Integer, nullable=False)
     itemId = Column(Integer, ForeignKey('items.id', ondelete="CASCADE"), nullable=False)
-    text_de = Column(Text, nullable=True)
-    text_en = Column(Text, nullable=True)
-    preview_de = Column(Text, nullable=True)
-    preview_en = Column(Text, nullable=True)
 
     item = relationship("Item", back_populates="chunks")
 
 Item.chunks = relationship("Chunk", order_by=Chunk.id, back_populates="item", cascade="all, delete-orphan")
+
+class Snippet(Base):
+    """
+    Represents a piece of text associated with some other other element, either from item or chunk tables
+
+    Attributes:
+        id (int): Primary key of the chunk.
+        refIdx (int): Index of referenced element. Matches vector index.
+        itemId (int): Foreign key referencing the associated item. Nullabe with on delete cascade
+        chunkId (int): Foreign key referencing the associated chunk. Nullable with on delete cascade
+        lang (str): The language of the text.
+        type (str): Type of the text. Can be 'title', 'summary' or 'text'.
+        content (str): The text content of the chunk. Must be in project.langs
+        item (Item): Relationship to the Item model, back_populated by 'chunks'.
+        chunk (Chunk): Relationship to the Item model, back_populated by 'chunks'.
+    """
+    __tablename__ = 'snippets'
+    id = Column(Integer, primary_key=True)
+    refIdx = Column(Integer, nullable=False)
+    itemId = Column(Integer, ForeignKey('items.id', ondelete="CASCADE"), nullable=True)
+    chunkId = Column(Integer, ForeignKey('chunks.id', ondelete="CASCADE"), nullable=True)
+    lang = Column(String(10), nullable=False)
+    type = Column(String(50), nullable=False)
+    content = Column(Text, nullable=False)
+
+    item = relationship("Item", back_populates="snippets")
+    chunk = relationship("Chunk", back_populates="snippets")
+
+    __table_args__ = (
+        CheckConstraint("type IN ('content', 'title', 'summary')", name='check_type_in_list'),
+    )
+    
+Item.snippets = relationship("Snippet", order_by=Snippet.id, back_populates="item", cascade="all, delete-orphan")
+Chunk.snippets = relationship("Snippet", order_by=Snippet.id, back_populates="chunk", cascade="all, delete-orphan")
 
 class Vector(Base):
     """
@@ -142,41 +161,19 @@ class Vector(Base):
 
     Attributes:
         id (int): The primary key of the vector.
-        chunkId (int): The foreign key referencing the associated chunk.
-        value_<lang> (bytes): The binary data representing the vector.
-        chunk (Chunk): The relationship to the Chunk model, back_populated by "vectors".
+        snipId (int): The foreign key referencing the associated snippet.
+        value (bytes): The binary data representing the vector.
+        snippet (Snippet): The relationship to the Snippet model, back_populated by "vectors".
     """
     __tablename__ = 'vectors'
 
     id = Column(Integer, primary_key=True)
-    chunkId = Column(Integer, ForeignKey('chunks.id', ondelete="CASCADE"), nullable=False)
-    value_de = Column(LargeBinary, nullable=False)  # Blob
-    value_en = Column(LargeBinary, nullable=False)  # Blob
+    snipId = Column(Integer, ForeignKey('snippets.id', ondelete="CASCADE"), nullable=False)
+    value = Column(LargeBinary, nullable=False)  # Blob
 
-    chunk = relationship("Chunk", back_populates="vectors")
+    snippet = relationship("Snippet", back_populates="vectors")
 
-Chunk.vectors = relationship("Vector", order_by=Vector.id, back_populates="chunk", cascade="all, delete-orphan")
-
-class TitleVector(Base):
-    """
-    TitleVector is a SQLAlchemy model representing the 'title_vectors' table.
-
-    Attributes:
-        id (int): Primary key of the table.
-        itemId (int): Foreign key referencing the 'items' table.
-        value_<lang> (LargeBinary): Blob data representing the vector value.
-        item (relationship): Relationship to the Item model, back_populated by 'title_vectors'.
-    """
-    __tablename__ = 'title_vectors'
-
-    id = Column(Integer, primary_key=True)
-    itemId = Column(Integer, ForeignKey('items.id', ondelete="CASCADE"), nullable=False)
-    value_de = Column(LargeBinary, nullable=False)  # Blob
-    value_en = Column(LargeBinary, nullable=False)  # Blob
-
-    item = relationship("Item", back_populates="title_vectors")
-
-Item.title_vectors = relationship("TitleVector", order_by=TitleVector.id, back_populates="item")
+Snippet.vectors = relationship("Vector", order_by=Vector.id, back_populates="snippet", cascade="all, delete-orphan")
 
 
 # Database Utility Class
@@ -282,14 +279,13 @@ class DatabaseUtility:
                 raise ValueError(f"{model.__name__} with ID {obj_id} not found.")
 
             
-    def find_chunk(self, chunkIdx: int, projectId: int):
+    def find_chunk(self, chunkIdx: int):
         """
-        Find a Chunk by its index and project ID.
+        Find a Chunk by its index.
 
         Args:
             session (Session): The SQLAlchemy session to use for the query.
             chunkIdx (int): The index of the chunk to find.
-            projectId (int): The ID of the project to which the chunk belongs.
 
         Returns:
             Chunk: The found Chunk object, or None if no matching chunk is found.
@@ -297,7 +293,7 @@ class DatabaseUtility:
         stmt = (
             select(Chunk)
             .join(Item, Chunk.itemId == Item.id)  # Join Chunk -> Item
-            .where(Chunk.chunkIdx == chunkIdx, Item.projectId == projectId)  # Conditions
+            .where(Chunk.chunkIdx == chunkIdx)  # Conditions
         )
 
         # Execute the query
@@ -306,18 +302,16 @@ class DatabaseUtility:
             return result
 
 
-    def get_chunks(self, projectId: int):
+    def get_chunks(self):
         """
         Get a list of all chunks for a given projectId, ordered by itemIdx and then by chunkIdx.
 
         :param session: SQLAlchemy Session object
-        :param projectId: ID of the project
         :return: List of Chunk objects
         """
         stmt = (
             select(Chunk)
             .join(Item, Chunk.itemId == Item.id)  # Join Chunk with Item
-            .where(Item.projectId == projectId)  # Filter by projectId
             .order_by(Chunk.chunkIdx.asc())  # Order by chunkIdx
         )
         # Execute the query
@@ -362,7 +356,7 @@ class DatabaseUtility:
 
     def find_item(self, chunkIdx: int):
         """
-        Find an Item by a chunk index and project ID.
+        Find an Item by a chunk index.
 
         Args:
             session (Session): The SQLAlchemy session to use for the query.
@@ -498,8 +492,7 @@ class DatabaseUtility:
 
 if __name__ == "__main__":
     connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
-    #db_util = DatabaseUtility(connection_string)
-    # DatabaseUtility.delete_all(connection_string)
+    DatabaseUtility.delete_all(connection_string)
     db = DatabaseUtility(connection_string)    
 
     layout = db.get_table_layout("items")
@@ -507,65 +500,74 @@ if __name__ == "__main__":
 
     # Create dummy projects
     project = Project(name="Project Alpha", description="Description of Project Alpha",vectorName="prj1.vec",vectorPath = "./data")
-    project1 = db.insert(project)
-    print(f"Project1 ID: {project1.id}")
-    project = Project(name="Project Beta", description="Description of Project Beta",vectorName="prj2.vec",vectorPath = "./data")
-    project2 = db.insert(project)
-    print(f"Project2 ID: {project2.id}")
-
+    project = db.insert(project)
+    print(f"Project ID: {project.id}")
+    try: 
+        project = Project(name="Project Beta", description="Description of Project Beta",vectorName="prj2.vec",vectorPath = "./data")
+        project2 = db.insert(project)
+        print(f"Project2 ID: {project2.id}")
+    except:
+        print("Project already exists")
+        
     # Create dummy items
-    item = Item(name="Item One", code=101, projectId=project1.id, summary="Summary of item one", text="Fulltext for item one", tags="tag1,tag2", title="Title One", itemIdx=1)
+    item = Item(name="Item One", itemIdx=0)
     item1 = db.insert(item)
-    item = Item(name="Item Two", code=102, projectId=project2.id, summary="Summary of item two", text="Fulltext for item two", tags="tag3,tag4", title="Title Two", itemIdx=1)
+    item = Item(name="Item Two",  itemIdx=1)
     item2 = db.insert(item)
-    item = Item(name="Item Three", code=102, projectId=project1.id, summary="Summary of item three", text="Fulltext for item three", tags="tag1,tag2", title="Title Three", itemIdx=2)
+    item = Item(name="Item Three",  itemIdx=2)
     item3 = db.insert(item)
+
+    items = db.search(Item)
+    print(f"Items: {[i.name for i in items]}")
+
+    textIds = []
+
+    txt = Snippet(content="Summary of item one", lang="de", itemId = item1.id, refIdx = item1.itemIdx, type="summary")
+    txt1 = db.insert(txt)
+    textIds.append(txt1.id)
+    txt = Snippet(content="Title of item one", lang="de", itemId = item1.id, refIdx = item1.itemIdx, type="title")
+    txt2 = db.insert(txt)
+    textIds.append(txt2.id)
+    txt = Snippet(content="Content of item one", lang="de", itemId = item1.id, refIdx = item1.itemIdx, type="content")
+    txt3 = db.insert(txt)
+    textIds.append(txt3.id)
+
+    txt = Snippet(content="Summary of item two", lang="de", itemId = item2.id, refIdx = item2.itemIdx, type="summary")
+    txt = db.insert(txt)
+    textIds.append(txt.id)
+
+    texts = db.search(Snippet)
+    print(f"Texts: {[(i.content,i.itemId,i.chunkId,i.refIdx) for i in texts]}")
 
     # Create dummy chunks
     chunkIds = []
-    idx = 0
-    chunk = Chunk(chunkIdx=idx, chunkNum = 1, itemId=item1.id, text="Chunk 1 text")
-    chunk = db.insert(chunk)
-    idx += 1
-    chunkIds.append(chunk.id)
-    chunk = Chunk(chunkIdx=idx, chunkNum = 1, itemId=item2.id, text="Chunk 2 text")
-    chunk = db.insert(chunk)
-    idx += 1
-    chunkIds.append(chunk.id)
-    chunk = Chunk(chunkIdx=idx, chunkNum = 2, itemId=item1.id, text="Chunk 3 text")
-    chunk = db.insert(chunk)
-    idx += 1
-    chunkIds.append(chunk.id)
-    chunk = Chunk(chunkIdx=idx, chunkNum = 1, itemId=item3.id, text="Chunk 4 text")
-    chunk = db.insert(chunk)
-    idx += 1
-    chunkIds.append(chunk.id)
+    for idx in range (0,4):
+        chunk = Chunk(chunkIdx=idx, itemId=item1.id)
+        chunk = db.insert(chunk)
+        txt = Snippet(content=f"Content of chunk {idx + 1}", lang="de", chunkId = chunk.id, refIdx = chunk.chunkIdx, type="content")
+        txt = db.insert(txt)
+        textIds.append(txt.id)
+        chunkIds.append(chunk.id)
+
+    texts = db.search(Snippet)
+    print(f"Texts: {[(i.content,i.itemId,i.chunkId,i.refIdx) for i in texts]}")
+
 
     # Create dummy vectors
-    vector = np.random.rand(384).astype('float32')
-    binary_data = vector.tobytes()
+    v = np.random.rand(384).astype('float32')
+    binary_data = v.tobytes()
     # Insert into the database
-    vector1 = Vector(chunkId=chunkIds[0], value=binary_data)
-    vector = np.random.rand(384).astype('float32')
-    binary_data = vector.tobytes()
+    vector1 = Vector(snipId=textIds[0], value=binary_data)
+    v = np.random.rand(384).astype('float32')
+    binary_data = v.tobytes()
     # Insert into the database
-    vector2 = Vector(chunkId=chunkIds[1], value=binary_data)
+    vector2 = Vector(snipId=textIds[1], value=binary_data)
     db.insert(vector1)
     db.insert(vector2)
-    
-    # Create dummy title_vectors
-    vector = np.random.rand(384).astype('float32')
-    binary_data = vector.tobytes()
-    # Insert into the database
-    vector1 = TitleVector(itemId=item1.id, value=binary_data)
-    vector = np.random.rand(384).astype('float32')
-    binary_data = vector.tobytes()
-    # Insert into the database
-    vector2 = TitleVector(itemId=item1.id, value=binary_data)
-    db.insert(vector1)
-    db.insert(vector2)
-    
-    
+
+    vecs = db.search(Vector)
+    print(f"Vectors: {[i.snipId for i in vecs]}")
+
 
     # Query and print data
     projects = db.search(Project) #.all()
@@ -574,32 +576,27 @@ if __name__ == "__main__":
 
     items = db.search(Item)
     for item in items:
-        print(f"Item: {item.name}, Code: {item.code}, Tags: {item.tags}")
+        print(f"Item: {item.name}")
 
     chunks = db.search(Chunk)
     for chunk in chunks:
-        print(f"Chunk: {chunk.text}, Index: {chunk.chunkIdx}")
+        print(f"Chunk Ref: {chunk.itemId}, Index: {chunk.chunkIdx}")
 
     vectors = db.search(Vector)
     for vector in vectors:
         value = np.frombuffer(vector.value, dtype='float32')
-        print(f"Vector: {value[:10]}...")  # Print the first 10 characters of the vector
+        print(f"Vector for {vector.snipId}: {value[:10]}...")  # Print the first 10 characters of the vector
 
-    vectors = db.search(TitleVector)
-    for vector in vectors:
-        value = np.frombuffer(vector.value, dtype='float32')
-        print(f"TitleVector: {value[:10]}...")  # Print the first 10 characters of the vector
+    c = db.find_chunk(1)
+    print("No chunk" if c == None else c.id)
+    i = db.find_item(1)
+    print("No item" if i == None else i.id)
+    c = db.find_chunk(2)
+    print("No chunk" if c == None else c.id)
+    i = db.find_item(2)
+    print("No item" if i == None else i.id)
 
-    c = db.find_chunk(1, 1)
-    print("No chunk" if c == None else c.text)
-    i = db.find_item(1, 1)
-    print("No item" if i == None else i.title)
-    c = db.find_chunk(1, 2)
-    print("No chunk" if c == None else c.text)
-    i = db.find_item(1, 2)
-    print("No item" if i == None else i.title)
-
-    results  = db.get_chunks(1)
+    results  = db.get_chunks()
     for chunk in results:
         print(f"Chunk, Item: {chunk.itemId}, Index: {chunk.chunkIdx}")
         #print(f"Chunk, Item: {item.id}, Index: {chunk.chunkIdx}")
