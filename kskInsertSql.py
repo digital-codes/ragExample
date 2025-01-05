@@ -34,16 +34,16 @@ except:
     sys.exit()
 
 connString = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
-db = sq.DatabaseUtility(connString)
-
 # clean up
-db.delete_all(connString)
+sq.DatabaseUtility.delete_all(connString)
+
+db = sq.DatabaseUtility(connString)
 
 # create project
 prj = sq.Project(name="ksk", langs="de,en", description="Klimaschutzkonzept Karlsruhe",
                  vectorName="ksk.vec",vectorPath = "./data",
                  indexName="ksk.idx",indexPath = "./data",
-                 embedModel="all-minilm-l12-v2", embedSize=384
+                 embedModel=embedder.model, embedSize=embedder.get_size()
                  )
 
 db.insert(prj)
@@ -61,20 +61,21 @@ for item in summary.itertuples(index=False):
     filename = item.filename
     
     # create item
-    tag1 = f"area_meta['area']"
+    tag1 = f"area_{meta['area']}"
     if tag1 not in tags:
         tags.append(tag1)
         tag_ = sq.Tag(name = tag1)
         db.insert(tag_)
-    tag2 = f"bundle_meta['bundle']"
+    tag2 = f"bundle_{meta['bundle']}"
     if tag2 not in tags:
         tags.append(tag2)
         tag_ = sq.Tag(name = tag2)
         db.insert(tag_)
     dbItem = sq.Item(itemIdx = itemIdx, 
-        name = f"{meta['area']}_{meta['bundle']}_{meta['topic']}",
-        tags = [tag1, tag2]
+        name = f"{meta['area']}_{meta['bundle']}_{meta['topic']}"
         ) 
+    dbItem = db.insert(dbItem)
+    db.updateTags(dbItem,[tag1, tag2])
     # insert texts
     ## de
     lang = "de"
@@ -96,10 +97,10 @@ for item in summary.itertuples(index=False):
     ## en
     lang = "en"
     ### content
-    txt = sq.Snippet(content=llmEn.translate(text), lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="content")
+    txt = sq.Snippet(content=llmEn.translate(text)[0], lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="content")
     txt = db.insert(txt)
     ##' title
-    txt = sq.Snippet(content=llmEn.translate(meta["title"]), lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="title")
+    txt = sq.Snippet(content=llmEn.translate(meta["title"])[0], lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="title")
     txt = db.insert(txt)
     embedding = embedder.encode(txt.content)
     vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
@@ -107,7 +108,7 @@ for item in summary.itertuples(index=False):
     dbVector = sq.Vector(snipId = txt.id, value = binary_data)   
     db.insert(dbVector) 
     ### summary
-    txt = sq.Snippet(content=llmEn.translate(item.text), lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="summary")
+    txt = sq.Snippet(content=llmEn.translate(item.text)[0], lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="summary")
     txt = db.insert(txt)
 
     # create chunk vectors
@@ -122,7 +123,7 @@ for item in summary.itertuples(index=False):
 
         ### content
         # de
-        txt = sq.Snippet(content=chunk, lang="de", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunk, type="content")
+        txt = sq.Snippet(content=chunk, lang="de", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunkIdx, type="content")
         txt = db.insert(txt)
         embedding = embedder.encode(txt.content)
         vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
@@ -130,7 +131,7 @@ for item in summary.itertuples(index=False):
         dbVector = sq.Vector(snipId = txt.id, value = binary_data)   
         db.insert(dbVector) 
         # en
-        txt = sq.Snippet(content=llmEn.translate(chunk), lang="en", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunk, type="content")
+        txt = sq.Snippet(content=llmEn.translate(chunk)[0], lang="en", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunkIdx, type="content")
         txt = db.insert(txt)
         embedding = embedder.encode(txt.content)
         vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
@@ -140,10 +141,10 @@ for item in summary.itertuples(index=False):
 
         ### summary/preview
         # de
-        txt = sq.Snippet(content=llm.preview(chunk), lang="de", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunk, type="summary")
+        txt = sq.Snippet(content=llm.preview(chunk)[0], lang="de", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunkIdx, type="summary")
         txt = db.insert(txt)
         # en
-        txt = sq.Snippet(content=llmEn.translate(txt.content), lang="en", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunk, type="summary")
+        txt = sq.Snippet(content=llmEn.translate(txt.content)[0], lang="en", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunkIdx, type="summary")
         txt = db.insert(txt)
 
         chunkIdx += 1 
