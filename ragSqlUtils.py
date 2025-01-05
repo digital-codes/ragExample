@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, Table
 from sqlalchemy import ForeignKey, LargeBinary, DateTime, MetaData, CheckConstraint
-from sqlalchemy import create_engine, text, func, select
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker, Session
+from sqlalchemy import create_engine, text, func, select, event, distinct
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker, Session, aliased
 
 from contextlib import contextmanager
 
@@ -47,27 +47,32 @@ class Project(Base):
     )
 
 
-
 # Junction table for items and tags
 item_tags = Table(
     'item_tags',
     Base.metadata,
-    Column('item_id', Integer, ForeignKey('items.id', ondelete='CASCADE'), primary_key=True),
-    Column('tag_id', Integer, ForeignKey('tags.id', ondelete='CASCADE'), primary_key=True)
+    Column('itemId', Integer, ForeignKey('items.id', ondelete='CASCADE'), primary_key=True),
+    Column('tagId', Integer, ForeignKey('tags.id', ondelete='CASCADE'), primary_key=True)
 )
 
 class Tag(Base):
     """
-    Represents a tag in the database.
+    Represents an tag in the database.
 
     Attributes:
         id (int): The primary key of the item.
         name (str): The unique name of the item.
+
+    Relationships:
+        project (Project): The project to which the item belongs.
     """
     __tablename__ = 'tags'
 
     id = Column(Integer, primary_key=True)
     name = Column(String(256), unique=True, nullable=False)
+
+    # Relationship with items via the junction table
+    items = relationship('Item', secondary=item_tags, back_populates='tags')
 
 
 class Item(Base):
@@ -100,6 +105,10 @@ class Item(Base):
     imgurl = Column(String(1024), nullable=True)
     license = Column(String(256), nullable=True)
     itemIdx = Column(Integer, nullable=False)
+
+    # Relationship with tags via the junction table
+    tags = relationship('Tag', secondary=item_tags, back_populates='items')
+
 
 class Chunk(Base):
     """
@@ -154,6 +163,27 @@ class Snippet(Base):
     
 Item.snippets = relationship("Snippet", order_by=Snippet.id, back_populates="item", cascade="all, delete-orphan")
 Chunk.snippets = relationship("Snippet", order_by=Snippet.id, back_populates="chunk", cascade="all, delete-orphan")
+
+@event.listens_for(Snippet, "before_insert")
+def validate_language(mapper, connection, target):
+    """
+    Validate that the language of the text is in the project's allowed languages using FIND_IN_SET.
+    """
+    print(f"Snippet: {target.lang}",connection)
+    # Use FIND_IN_SET to check if the language is allowed
+    query = text(f"""
+        SELECT FIND_IN_SET('{target.lang}', langs) > 0
+        FROM projects
+        WHERE id = 1
+    """
+    )
+    result = connection.execute(query).scalar()
+
+    if not result:
+        msg = f"Snippet: language {target.lang} not allowed"
+        raise ValueError(msg)
+
+
 
 class Vector(Base):
     """
@@ -258,10 +288,34 @@ class DatabaseUtility:
             if not existing_obj:
                 raise ValueError(f"{model.__name__} with ID {updated_obj.id} not found.")
 
-            # Update fields
+        # Update fields
             for key, value in updated_obj.__dict__.items():
                 if not key.startswith("_"):  # Skip SQLAlchemy internals
                     setattr(existing_obj, key, value)
+
+
+    def updateTags(self, updated_item, tags):
+        """
+        Update an item in the database with tags names.
+
+        :param model: SQLAlchemy model class (e.g., Item, Chunk)
+        :param updated_item: SQLAlchemy Item model instance. Must have a valid ID.
+        :param tags: List of tag names to associate with the item.
+        """
+        if not isinstance(updated_item, Item):
+            raise ValueError("updated_item must be an instance of Item.")
+        with self.get_session() as session:
+            # Query the existing object
+            existing_obj = session.query(Item).filter(Item.id == updated_item.id).first()
+            if not existing_obj:
+                raise ValueError(f"{Item.__name__} with ID {updated_item.id} not found.")
+
+            # find tags from names
+            tags = session.query(Tag).filter(Tag.name.in_(tags)).all()
+            if not tags:
+                raise ValueError(f"No tags found for names: {tags}")
+            setattr(existing_obj, "tags", tags)
+
 
     def delete_id(self, model, obj_id):
         """
@@ -380,8 +434,6 @@ class DatabaseUtility:
     def get_items(self):
         """
         Get a list of all items, ordered by itemIdx (ascending).
-
-        :param session: SQLAlchemy Session object
         :return: List of Item objects
         """
         stmt = (
@@ -395,17 +447,15 @@ class DatabaseUtility:
             return result
 
 
-    def get_item(self, name: str = None):
+    def get_item_by_name(self, name: str = None):
         """
         Get an item by name or code, where only one of the parameters is provided.
-
-        :param session: SQLAlchemy Session object
         :param name: Name of the item (optional)
         :return: Item object or None if not found
         :raises ValueError: If neither or both parameters are provided
         """
         if not name:
-            raise ValueError("Namemust be provided.")
+            raise ValueError("Name must be provided.")
 
         stmt = select(Item)
         stmt = stmt.where(Item.name == name)
@@ -414,6 +464,42 @@ class DatabaseUtility:
         with self.get_session() as session:
             result = session.execute(stmt).scalars().first()
             return result
+
+    def get_items_by_tags(self, tags = []):
+        """
+        Get all items matching on tags
+        :param tags: List of tags
+        :return: Item object or None if not found
+        :raises ValueError: If neither or both parameters are provided
+        """
+        if len(tags) == 0:
+            raise ValueError("Tag(s) must be provided.")
+
+        tag_alias = aliased(Tag)
+        stmt = (
+            select(distinct(Item.id))
+            .join(item_tags, Item.id == item_tags.c.itemId)  
+            .join(tag_alias, tag_alias.id == item_tags.c.tagId) 
+            .where(tag_alias.name.in_(tags))
+        )
+        with self.get_session() as session:
+            result = session.execute(stmt).scalars().all()
+            return result
+            
+
+
+    def get_item_tags(self, itemId):
+        stmt = select(Item)
+        stmt = stmt.where(Item.id == itemId)
+
+        # Execute the query
+        with self.get_session() as session:
+            item = session.execute(stmt).scalars().first()
+            if not item:
+                return []
+            return [tag.name for tag in item.tags]
+
+
 
 
     def get_table_layout(self,table_name):
@@ -499,7 +585,7 @@ if __name__ == "__main__":
     print(layout)
 
     # Create dummy projects
-    project = Project(name="Project Alpha", description="Description of Project Alpha",vectorName="prj1.vec",vectorPath = "./data")
+    project = Project(name="Project Alpha", langs="de,en", description="Description of Project Alpha",vectorName="prj1.vec",vectorPath = "./data")
     project = db.insert(project)
     print(f"Project ID: {project.id}")
     try: 
@@ -508,17 +594,34 @@ if __name__ == "__main__":
         print(f"Project2 ID: {project2.id}")
     except:
         print("Project already exists")
+
+    # create some tags 
+    tag = Tag(name="tag1")
+    tag1 = db.insert(tag)
+    tag = Tag(name="tag2")
+    tag2 = db.insert(tag)
+    tag = Tag(name="tag3")
+    tag3 = db.insert(tag)
+
         
     # Create dummy items
     item = Item(name="Item One", itemIdx=0)
     item1 = db.insert(item)
-    item = Item(name="Item Two",  itemIdx=1)
+    item = Item(name="Item Two",  itemIdx=1,tags = [tag1,tag2])
     item2 = db.insert(item)
-    item = Item(name="Item Three",  itemIdx=2)
+    item = Item(name="Item Three",  itemIdx=2,tags = [tag3,tag2])
     item3 = db.insert(item)
+    print(f"Item tags: {[t.name for t in item3.tags]}")
+    items = db.search(Item)
+    print(f"Items: {[(i.name) for i in items]}")
+
+    # update item1 name
+    item1.name = "Item One Updated"
+    db.update(Item,item1)
 
     items = db.search(Item)
-    print(f"Items: {[i.name for i in items]}")
+    print(f"Items: {[(i.name) for i in items]}")
+
 
     textIds = []
 
@@ -528,7 +631,7 @@ if __name__ == "__main__":
     txt = Snippet(content="Title of item one", lang="de", itemId = item1.id, refIdx = item1.itemIdx, type="title")
     txt2 = db.insert(txt)
     textIds.append(txt2.id)
-    txt = Snippet(content="Content of item one", lang="de", itemId = item1.id, refIdx = item1.itemIdx, type="content")
+    txt = Snippet(content="Content of item one", lang="en", itemId = item1.id, refIdx = item1.itemIdx, type="content")
     txt3 = db.insert(txt)
     textIds.append(txt3.id)
 
@@ -538,6 +641,15 @@ if __name__ == "__main__":
 
     texts = db.search(Snippet)
     print(f"Texts: {[(i.content,i.itemId,i.chunkId,i.refIdx) for i in texts]}")
+
+    # associate tags with items
+    db.updateTags(item1,["tag1","tag3"])
+    print(f"Updated item tags: {db.get_item_tags(item1.id)}")
+
+    # find items by tags
+    items = db.get_items_by_tags(["tag2"])
+    print(f"Items by tags: {[i for i in items]}")
+
 
     # Create dummy chunks
     chunkIds = []
