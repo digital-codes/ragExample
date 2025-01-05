@@ -24,6 +24,7 @@ preprocessor = textUtils.PreProcessor()
 embedder = deployUtils.Embedder(provider="local")
 
 llm = deployUtils.Llm()    
+llmEn = deployUtils.Llm(lang="en")    
 
 # try to get summary file first
 try:
@@ -35,9 +36,19 @@ except:
 connString = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
 db = sq.DatabaseUtility(connString)
 
+# clean up
+db.delete_all(connString)
+
 # create project
-prj = sq.Project(name="ksk", lang="de", description="Klimaschutzkonzept Karlsruhe",vectorName="ksk-de.vec",vectorPath = "./data")
+prj = sq.Project(name="ksk", langs="de,en", description="Klimaschutzkonzept Karlsruhe",
+                 vectorName="ksk.vec",vectorPath = "./data",
+                 indexName="ksk.idx",indexPath = "./data",
+                 embedModel="all-minilm-l12-v2", embedSize=384
+                 )
+
 db.insert(prj)
+
+tags = []
 
 itemIdx = 0
 chunkIdx = 0
@@ -50,39 +61,92 @@ for item in summary.itertuples(index=False):
     filename = item.filename
     
     # create item
-    dbItem = sq.Item(itemIdx = itemIdx, projectId = prj.id, 
+    tag1 = f"area_meta['area']"
+    if tag1 not in tags:
+        tags.append(tag1)
+        tag_ = sq.Tag(name = tag1)
+        db.insert(tag_)
+    tag2 = f"bundle_meta['bundle']"
+    if tag2 not in tags:
+        tags.append(tag2)
+        tag_ = sq.Tag(name = tag2)
+        db.insert(tag_)
+    dbItem = sq.Item(itemIdx = itemIdx, 
         name = f"{meta['area']}_{meta['bundle']}_{meta['topic']}",
-        code = (ord(meta['area']) << 16 ) | (int(meta['bundle']) << 8) | (int(meta['topic'])),
-        title = meta['title'],
-        text = text
+        tags = [tag1, tag2]
         ) 
-    db.insert(dbItem) 
-    embedding = embedder.encode(meta['title'])
+    # insert texts
+    ## de
+    lang = "de"
+    ### content
+    txt = sq.Snippet(content=text, lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="content")
+    txt = db.insert(txt)
+    ### title
+    txt = sq.Snippet(content=meta["title"], lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="title")
+    txt = db.insert(txt)
+    embedding = embedder.encode(txt.content)
     vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
-    assert len(vector) == embedder.size
     binary_data = vector.tobytes()
-    assert len(binary_data) == embedder.size * np.dtype(np.float32).itemsize 
-    dbTitleVector = sq.TitleVector(itemId = dbItem.id, value = binary_data)   
-    db.insert(dbTitleVector) 
+    dbVector = sq.Vector(snipId = txt.id, value = binary_data)   
+    db.insert(dbVector) 
+    ### summary
+    txt = sq.Snippet(content=item.text, lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="summary")
+    txt = db.insert(txt)
 
+    ## en
+    lang = "en"
+    ### content
+    txt = sq.Snippet(content=llmEn.translate(text), lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="content")
+    txt = db.insert(txt)
+    ##' title
+    txt = sq.Snippet(content=llmEn.translate(meta["title"]), lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="title")
+    txt = db.insert(txt)
+    embedding = embedder.encode(txt.content)
+    vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
+    binary_data = vector.tobytes()
+    dbVector = sq.Vector(snipId = txt.id, value = binary_data)   
+    db.insert(dbVector) 
+    ### summary
+    txt = sq.Snippet(content=llmEn.translate(item.text), lang=lang, itemId = dbItem.id, refIdx = dbItem.itemIdx, type="summary")
+    txt = db.insert(txt)
 
-    itemIdx += 1 
-
+    # create chunk vectors
     chunks = preprocessor.chunk(text)
     for i, chunk in enumerate(chunks):
         # create item
         print(f"Processing chunk {i}")
         preview, _ = llm.preview(chunk)
-        dbChunk = sq.Chunk(itemId = dbItem.id, chunkNum = i, chunkIdx = chunkIdx, text = chunk, preview = preview)
-        db.insert(dbChunk)
-        chunkIdx += 1 
-        # create vector
-        embedding = embedder.encode(chunk)
+        dbChunk = sq.Chunk(itemId = dbItem.id, chunkIdx = chunkIdx)
+        # , text = chunk, preview = preview)
+        dbChunk = db.insert(dbChunk)
+
+        ### content
+        # de
+        txt = sq.Snippet(content=chunk, lang="de", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunk, type="content")
+        txt = db.insert(txt)
+        embedding = embedder.encode(txt.content)
         vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
-        assert len(vector) == embedder.size
         binary_data = vector.tobytes()
-        assert len(binary_data) == embedder.size * np.dtype(np.float32).itemsize 
-        dbVector = sq.Vector(chunkId = dbChunk.id, value = binary_data)   
+        dbVector = sq.Vector(snipId = txt.id, value = binary_data)   
         db.insert(dbVector) 
+        # en
+        txt = sq.Snippet(content=llmEn.translate(chunk), lang="en", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunk, type="content")
+        txt = db.insert(txt)
+        embedding = embedder.encode(txt.content)
+        vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
+        binary_data = vector.tobytes()
+        dbVector = sq.Vector(snipId = txt.id, value = binary_data)   
+        db.insert(dbVector) 
+
+        ### summary/preview
+        # de
+        txt = sq.Snippet(content=llm.preview(chunk), lang="de", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunk, type="summary")
+        txt = db.insert(txt)
+        # en
+        txt = sq.Snippet(content=llmEn.translate(txt.content), lang="en", itemId = dbItem.id, chunkId = dbChunk.id, refIdx = dbChunk.chunk, type="summary")
+        txt = db.insert(txt)
+
+        chunkIdx += 1 
                 
+    itemIdx += 1 
 
