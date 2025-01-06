@@ -4,7 +4,7 @@ import requests
 query = {
     "top_n": 7,
     "vector": [0.1] * 384,
-    "vector_index":1
+    "vector_index":0
 }
 
 r = requests.post("http://localhost:9001",json=query)

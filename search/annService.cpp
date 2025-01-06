@@ -62,18 +62,18 @@
 #include <Eigen/Dense>
 #include <boost/beast.hpp>
 #include <boost/asio.hpp>
-#include <boost/json.hpp>
+#include <json/json.h>
+//#include <boost/json.hpp>
 
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace net = boost::asio;
-namespace json = boost::json;
 
 using tcp = boost::asio::ip::tcp;
 
 #include <sys/stat.h>
 
-// g++ -o annService annService.cpp -O3 -I/usr/include/eigen3 -I /usr/include/boost -l boost_json
+// g++ -o annService annService.cpp -O3 -I/usr/include/eigen3 -I /usr/include/boost -l jsoncpp 
 
 // Type aliases
 using Vector = Eigen::VectorXf;
@@ -253,89 +253,84 @@ size_t calculate_num_vectors(const std::string &filename, int dim)
  * @throws std::runtime_error if the query vector size does not match the dimensions of the dataset,
  *                            if the "vector" key is missing or invalid, or if the vector_index is out of range.
  */
-void handle_request(http::request<http::string_body> &req,
-                    http::response<http::string_body> &res,
-                    const std::vector<Matrix> &all_embeddings,
-                    int dim)
-{
-    try
-    {
+void handle_request(http::request<http::string_body>& req, http::response<http::string_body>& res,
+                    const std::vector<Matrix>& all_embeddings, int dim) {
+    try {
         // Parse JSON request
-        auto body = json::parse(req.body()).as_object();
+        Json::Value body;
+        std::istringstream req_body_stream(req.body());
+        req_body_stream >> body;
+
         // Check for "vector_index" and provide a default value
-        int vector_index = 0; // Default to the first vector set
-        if (auto it = body.find("vector_index"); it != body.end() && it->value().is_int64())
-        {
-            vector_index = it->value().as_int64();
-        }
+        int vector_index = body.isMember("vector_index") ? body["vector_index"].asInt() : 0;
 
         // Check for "top_n" and provide a default value
-        int top_n = 5; // Default to top 5 results
-        if (auto it = body.find("top_n"); it != body.end() && it->value().is_int64())
-        {
-            top_n = it->value().as_int64();
-        }
+        int top_n = body.isMember("top_n") ? body["top_n"].asInt() : 5;
 
         // Check for "vector" and validate
-        std::vector<float> query_vector(dim, 0.0f); // Default to a zero vector
-        if (auto it = body.find("vector"); it != body.end() && it->value().is_array())
-        {
-            auto query_vector_json = it->value().as_array();
-            if (query_vector_json.size() == dim)
-            {
-                for (size_t i = 0; i < query_vector_json.size(); ++i)
-                {
-                    query_vector[i] = static_cast<float>(query_vector_json[i].as_double());
-                }
-            }
-            else
-            {
-                throw std::runtime_error("Query vector size does not match the dimensions of the dataset.");
-            }
-        }
-        else
-        {
+        if (!body.isMember("vector") || !body["vector"].isArray()) {
             throw std::runtime_error("Missing or invalid 'vector' key.");
         }
 
-        if (vector_index < 0 || vector_index >= all_embeddings.size())
-        {
-            throw std::runtime_error("Invalid vector_index: Out of range");
+        const Json::Value& query_vector_json = body["vector"];
+        if (query_vector_json.size() != dim) {
+            throw std::runtime_error("Query vector size does not match the dimensions of the dataset.");
         }
-        const Matrix &embeddings = all_embeddings[vector_index];
 
-        // Convert query vector to Eigen
+        std::vector<float> query_vector(dim, 0.0f);
+        for (size_t i = 0; i < query_vector_json.size(); ++i) {
+            query_vector[i] = query_vector_json[static_cast<Json::ArrayIndex>(i)].asFloat();
+
+        }
+
+        // Validate vector_index
+        if (vector_index < 0 || vector_index >= all_embeddings.size()) {
+            throw std::runtime_error("Invalid vector_index: Out of range.");
+        }
+
+        // Retrieve the specified embeddings
+        const Matrix& embeddings = all_embeddings[vector_index];
+
+        // Normalize the query vector
         Vector query = Eigen::Map<Vector>(query_vector.data(), dim).normalized();
 
         // Perform brute-force search
-        auto results = parallel_brute_force_search(query, embeddings, top_n, 8);
+        auto results = parallel_brute_force_search(query, embeddings, top_n,8);
 
         // Prepare JSON response
-        json::array json_results;
-        for (const auto &result : results)
-        {
-            json::object obj;
+        Json::Value response(Json::arrayValue);
+        for (const auto& result : results) {
+            Json::Value obj;
             obj["index"] = result.first;
             obj["similarity"] = result.second;
-            json_results.push_back(obj);
+            response.append(obj);
         }
 
-        json::object response_body;
-        response_body["results"] = json_results;
-
         // Set HTTP response
+        Json::Value response_body;
+        response_body["results"] = response;
+
+        Json::StreamWriterBuilder writer;
+        std::ostringstream oss;
+        std::unique_ptr<Json::StreamWriter> json_writer(writer.newStreamWriter());
+        json_writer->write(response_body, &oss);
+
         res.result(http::status::ok);
         res.set(http::field::content_type, "application/json");
-        res.body() = json::serialize(response_body);
+        res.body() = oss.str();
         res.prepare_payload();
-    }
-    catch (const std::exception &ex)
-    {
-        json::object error_response;
+    } catch (const std::exception& ex) {
+        Json::Value error_response;
         error_response["error"] = ex.what();
+
+        Json::StreamWriterBuilder writer;
+        std::ostringstream oss;
+        std::unique_ptr<Json::StreamWriter> json_writer(writer.newStreamWriter());
+        json_writer->write(error_response, &oss);
+
         res.result(http::status::bad_request);
         res.set(http::field::content_type, "application/json");
-        res.body() = json::serialize(error_response);
+        res.body() = oss.str();
         res.prepare_payload();
     }
 }
