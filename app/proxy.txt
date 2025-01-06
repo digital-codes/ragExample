@@ -1,0 +1,37 @@
+<VirtualHost *:80>
+    ServerName yourdomain.com
+    ServerAlias www.yourdomain.com
+
+    # Handle requests to /api via reverse proxy to FastAPI
+    ProxyPreserveHost On
+    ProxyPass /api http://127.0.0.1:8000
+    ProxyPassReverse /api http://127.0.0.1:8000
+
+    # Ensure all other requests are handled by Apache/PHP
+    DocumentRoot /var/www/html
+    <Directory /var/www/html>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    # Logging (optional)
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+
+
+Explanation of Configuration
+
+    Proxying /api Requests:
+        ProxyPass /api http://127.0.0.1:8000 forwards requests starting with /api to the FastAPI service running on localhost:8000.
+        ProxyPassReverse /api http://127.0.0.1:8000 ensures that responses from FastAPI are rewritten properly so they work transparently with Apache.
+
+    Serving Other Requests:
+        The DocumentRoot (/var/www/html) handles all non-/api requests using Apache (e.g., PHP files, static files, etc.).
+
+    Preserve Host Header:
+        ProxyPreserveHost On ensures the original Host header is preserved, so the FastAPI app can use it if needed.
+
+    Logging:
+        Logs can help debug issues with proxying.
