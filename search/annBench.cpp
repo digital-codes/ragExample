@@ -170,6 +170,10 @@ int main() {
 
     std::cout << "FAISS is compiled with GPU support: " 
               << faiss::get_compile_options() << std::endl;
+    auto ompThreads = omp_get_max_threads();
+    omp_set_num_threads(ompThreads); // Set the number of threads
+    std::cout << "Number of faiss threads used: " << ompThreads << std::endl;
+
 
     // Test cases: Increasing number of vectors
     benchmark(1000, dim, top_n);    // 10^4
@@ -213,5 +217,79 @@ faiss searching time: 1620 ms
 Benchmarking with 10000000 vectors of dimension 768
 Creating embeddings time: 47157 ms
 Parallel Brute-force time: 1894 ms
+
+*/
+
+/*
+
+If your query batch size is 1, FAISS might perform poorly compared to parallel brute-force implementations because the overhead of managing the index and threads becomes significant relative to the small workload. Processing queries one by one is not the most efficient way to use FAISS, especially for small datasets or brute-force search.
+Why Query Batch Size 1 is Inefficient
+
+    Thread Overhead:
+        FAISS uses OpenMP for parallelization. With a batch size of 1, it’s difficult to fully utilize the available CPU threads because there's limited work to distribute.
+
+    Index Overhead:
+        Even lightweight FAISS indexes (IndexFlat) involve some initialization and search overhead that become noticeable when querying a single vector at a time.
+
+    Poor Cache Utilization:
+        Querying multiple vectors in a batch allows FAISS to benefit from data locality and efficient memory access. Single queries prevent these optimizations.
+
+
+Reasons FAISS Might Be Slower
+
+    Index Structure Overhead
+        Some FAISS indexes, like IndexIVF or IndexHNSW, involve preprocessing steps (e.g., cluster assignment or graph traversal) that introduce overhead for small datasets.
+        For up to 10M vectors, the additional computation for building or using these structures might not be worth the tradeoff compared to brute force.
+
+    Flat Index on CPU
+        If you're using IndexFlat for brute force search on a CPU, FAISS computes distances sequentially by default.
+        On modern CPUs with many cores, a custom parallel brute-force implementation can outperform FAISS if FAISS doesn't leverage all available cores effectively.
+
+    Incorrect Parallelization Configuration
+        FAISS uses OpenMP for parallelization, but it may not be leveraging all available CPU threads due to incorrect environment settings.
+
+    Query-Vector Overhead
+        If the query batch size is too small, the overhead of using FAISS can outweigh its benefits. Parallel brute-force implementations might handle small batches more efficiently.
+
+    Dataset Size and Dimensionality
+        FAISS is optimized for large datasets (hundreds of millions of vectors) and high-dimensional data. For small datasets (e.g., 10M vectors) or low-dimensional data, the overhead might outweigh its benefits.
+
+How to Address These Issues
+1. Use IndexFlat with Parallelization
+
+    FAISS's IndexFlat is a brute-force index that supports parallel search via OpenMP. Ensure OpenMP is properly configured to utilize multiple threads.
+
+
+2. Increase Query Batch Size
+
+    Querying vectors in larger batches reduces per-query overhead. Adjust the batch size to match your workload.
+
+        int nq = 100; // Number of query vectors in a batch
+        index.search(nq, queries.data(), k, distances.data(), indices.data());
+
+3. Consider Using GPU
+
+
+4. Switch to More Efficient Indexes
+
+    If brute force is still faster, consider switching to a more efficient FAISS index type that reduces the search space, like IndexIVFFlat:
+        Train the index:
+
+        index.train(nb, data); // Train on a subset of vectors
+        index.add(nb, data);   // Add vectors
+
+        This can dramatically reduce the number of comparisons while maintaining high recall.
+
+
+
+Why FAISS Is Designed This Way
+
+FAISS is optimized for large-scale, high-dimensional datasets where exact brute force becomes infeasible. For small datasets, brute force or simpler custom implementations may outperform FAISS due to its overhead.
+Recommendations
+
+    Use IndexFlat for exact search with proper parallelization for datasets of up to 10M vectors.
+    For larger datasets, switch to IndexIVFFlat or similar approximate indexes.
+    For faster brute-force search, consider using GPU-based FAISS indexes.
+
 
 */
