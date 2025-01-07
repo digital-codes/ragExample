@@ -528,29 +528,34 @@ class VectorDb:
     def __init__(self, provider: str = "zilliz", lang = "de", collection="ksk"):
         if provider == "zilliz":
             self.api_key = pr.zilliz["apiKey"]
-            self.lang = "german" if lang == "de" else "english"
             self.collection = f'{collection}_{lang}'
             self.url = f'https://{cfg.zilliz["cluster"]}.serverless.{cfg.zilliz["region"]}.cloud.zilliz.com'
         elif provider == "localsearch":
-            collectionIdx = cfg.localsearch["collections"].index(collection)
-            if collectionIdx == -1:
-                raise ValueError("Invalid collection")
-            self.collection = collectionIdx
             self.url = cfg.localsearch["url"]
+            response = requests.get(self.url)
+            if response.status_code == 200:
+                collections = response.json()
+                # localize collection
+                locCollection = f'{collection}-{lang}'
+                if locCollection in collections:
+                    self.collection = collections.index(locCollection)
+                else:
+                    raise ValueError("Invalid collection")
+            else:
+                raise ValueError("Service error:",response.status_code)
         else:
             raise ValueError("Invalid provider")
         self.provider = provider
+        self.lang = lang
 
     @measure_execution_time
-    def describeCollection(self, collection):
+    def describeCollection(self):
         if self.provider == "zilliz":
             hdrs = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            if collection == None:
-                collection = self.collection
-            data = {"collectionName": collection}
+            data = {"collectionName": self.collection}
             url = f"{self.url}/v2/vectordb/collections/describe"
             response = requests.post(url, headers=hdrs, json=data)
             if response.status_code == 200:
@@ -562,16 +567,14 @@ class VectorDb:
             raise ValueError("Invalid provider")
 
     @measure_execution_time
-    def indexCollection(self, collection, field):
+    def indexCollection(self, field):
         if self.provider == "zilliz":
             hdrs = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            if collection == None:
-                collection = self.collection
             data = {
-                "collectionName": collection,
+                "collectionName": self.collection,
                 "indexParams": [
                     {
                         "metricType": "L2",
@@ -592,15 +595,13 @@ class VectorDb:
             raise ValueError("Invalid provider")
 
     @measure_execution_time
-    def indexDescribeCollection(self, collection, field):
+    def indexDescribeCollection(self, field):
         if self.provider == "zilliz":
             hdrs = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            if collection == None:
-                collection = self.collection
-            data = {"collectionName": collection, "indexName": field}
+            data = {"collectionName": self.collection, "indexName": field}
             url = f"{self.url}/v2/vectordb/indexes/describe"
             response = requests.post(url, headers=hdrs, json=data)
             if response.status_code == 200:
@@ -612,15 +613,13 @@ class VectorDb:
             raise ValueError("Invalid provider")
 
     @measure_execution_time
-    def indexListCollection(self, collection):
+    def indexListCollection(self):
         if self.provider == "zilliz":
             hdrs = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            if collection == None:
-                collection = self.collection
-            data = {"collectionName": collection}
+            data = {"collectionName": self.collection}
             url = f"{self.url}/v2/vectordb/indexes/list"
             response = requests.post(url, headers=hdrs, json=data)
             if response.status_code == 200:
@@ -632,15 +631,32 @@ class VectorDb:
             raise ValueError("Invalid provider")
 
     @measure_execution_time
-    def statCollection(self, collection):
+    def statCollection(self):
+        """
+        Collects statistics for a given collection based on the provider.
+
+        This method collects statistics for a specified collection from either the "zilliz" or "localsearch" provider.
+        If the provider is "zilliz", it sends a POST request to the specified URL with the collection name and returns the response JSON.
+        If the provider is "localsearch", it sends a GET request to the specified URL and checks if the collection exists in the response.
+
+        Args:
+            collection (str): The name of the collection to collect statistics for. If None, the default collection is used.
+
+        Returns:
+            dict or int or None: 
+                - If the provider is "zilliz" and the request is successful, returns the response JSON as a dictionary.
+                - If the provider is "localsearch" and the request is successful, returns the index of the collection in the response list, or -1 if the collection is not found.
+                - If the request fails, returns None.
+
+        Raises:
+            ValueError: If the provider is not "zilliz" or "localsearch".
+        """
         if self.provider == "zilliz":
             hdrs = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            if collection == None:
-                collection = self.collection
-            data = {"collectionName": collection}
+            data = {"collectionName": self.collection}
             url = f"{self.url}/v2/vectordb/collections/get_stats"
             response = requests.post(url, headers=hdrs, json=data)
             if response.status_code == 200:
@@ -652,15 +668,13 @@ class VectorDb:
             raise ValueError("Invalid provider")
 
     @measure_execution_time
-    def upsertItem(self, collection, item):
+    def upsertItem(self, item):
         if self.provider == "zilliz":
             hdrs = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            if collection == None:
-                collection = self.collection
-            data = {"collectionName": collection, "data": [item]}
+            data = {"collectionName": self.collection, "data": [item]}
             url = f"{self.url}/v2/vectordb/entities/upsert"
             response = requests.post(url, headers=hdrs, json=data)
             if response.status_code == 200:
@@ -672,11 +686,10 @@ class VectorDb:
             raise ValueError("Invalid provider")
 
     @measure_execution_time
-    def searchItem(self, collection, vectors, limit=3, fields=["*"], groupByFile=True):
+    def searchItem(self, vectors, limit=3, fields=["*"], groupByFile=True):
         """_summary_
 
         Args:
-            collection (_type_): _description_
             vectors (_type_): _description_
             limit (int, optional): _description_. Defaults to 3.
             fields (list, optional): _description_. Defaults to ["*"].
@@ -691,10 +704,8 @@ class VectorDb:
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            if collection == None:
-                collection = self.collection
             data = {
-                "collectionName": collection,
+                "collectionName": self.collection,
                 "data": [vectors],
                 "limit": limit,
                 "outputFields": fields,
@@ -712,32 +723,28 @@ class VectorDb:
                 return None
         elif self.provider == "localsearch":
             data = {
-                "collection": collection,
+                "collection": self.collection,
                 "vectors": vectors,
                 "limit": limit
             }
             response = requests.post(self.url, json=data)
             if response.status_code == 200:
-                if response.json()["code"] == 0:
-                    return response.json()
-                raise ValueError(response.json())
+                return response.json()
             else:
-                print(response.status_code)
+                if DEBUG: print(response.status_code)
                 return None
         else:
             raise ValueError("Invalid provider")
 
     @measure_execution_time
-    def queryText(self, collection, condition, limit=3, fields=["*"]):
+    def queryText(self, condition, limit=3, fields=["*"]):
         if self.provider == "zilliz":
             hdrs = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {self.api_key}",
             }
-            if collection == None:
-                collection = self.collection
             data = {
-                "collectionName": collection,
+                "collectionName": self.collection,
                 "filter": condition,
                 "limit": limit,
                 "outputFields": fields,

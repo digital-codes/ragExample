@@ -56,6 +56,5 @@ localllama = {
 
 # local vector search server
 localsearch = {
-    "url":"http://localhost:9001/",
-    "collections":["ksk_de_title","ksk_en_title","ksk_de_chunks","ksk_en_chunks","ksk_de_summary","ksk_en_summary"]
+    "url":"http://localhost:9001/"
 }

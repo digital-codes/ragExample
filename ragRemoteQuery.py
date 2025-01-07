@@ -88,7 +88,7 @@ def checkDb():
     """
     # check collection exists
     try:
-        collection = config["dbClient"].describeCollection(config["dbCollection"])
+        collection = config["dbClient"].describeCollection()
         if DEBUG: print(collection)
         if collection["code"] != 0:
             print(f"Error on {collection}: {collection['code']}")
@@ -177,7 +177,7 @@ if __name__ == "__main__":
         if not followUp:
             embedding = config["embedder"].encode(query)
             searchVector = embedding["data"][0]["embedding"]
-            searchResult = config["dbClient"].searchItem(config["dbCollection"], searchVector, limit=config["dbItems"], fields=["itemId","title","file","meta","text"])
+            searchResult = config["dbClient"].searchItem(searchVector, limit=config["dbItems"], fields=["itemId","title","file","meta","text"])
             if DEBUG: print(searchResult)
             files = [f["file"] for f in searchResult["data"]]
             results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= .35]

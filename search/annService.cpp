@@ -63,7 +63,7 @@
 #include <boost/beast.hpp>
 #include <boost/asio.hpp>
 #include <json/json.h>
-//#include <boost/json.hpp>
+// #include <boost/json.hpp>
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -73,7 +73,7 @@ using tcp = boost::asio::ip::tcp;
 
 #include <sys/stat.h>
 
-// g++ -o annService annService.cpp -O3 -I/usr/include/eigen3 -I /usr/include/boost -l jsoncpp 
+// g++ -o annService annService.cpp -O3 -I/usr/include/eigen3 -I /usr/include/boost -l jsoncpp
 
 // Type aliases
 using Vector = Eigen::VectorXf;
@@ -253,75 +253,122 @@ size_t calculate_num_vectors(const std::string &filename, int dim)
  * @throws std::runtime_error if the query vector size does not match the dimensions of the dataset,
  *                            if the "vector" key is missing or invalid, or if the vector_index is out of range.
  */
-void handle_request(http::request<http::string_body>& req, http::response<http::string_body>& res,
-                    const std::vector<Matrix>& all_embeddings, int dim) {
-    try {
-        // Parse JSON request
-        Json::Value body;
-        std::istringstream req_body_stream(req.body());
-        req_body_stream >> body;
+void handle_request(http::request<http::string_body> &req, http::response<http::string_body> &res,
+                    const std::vector<Matrix> &all_embeddings, int dim, std::vector<std::string> collections)
+{
+    try
+    {
+        if (req.method() == http::verb::get)
+        {
+            // Handle GET request: return list of files
+            Json::Value response_body(Json::arrayValue);
+            for (const auto &collection : collections)
+            {
+                response_body.append(collection);
+            }
 
-        // Check for "vector_index" and provide a default value
-        int vector_index = body.isMember("vector_index") ? body["vector_index"].asInt() : 0;
+            Json::StreamWriterBuilder writer;
+            std::ostringstream oss;
+            std::unique_ptr<Json::StreamWriter> json_writer(writer.newStreamWriter());
+            json_writer->write(response_body, &oss);
 
-        // Check for "top_n" and provide a default value
-        int top_n = body.isMember("top_n") ? body["top_n"].asInt() : 5;
-
-        // Check for "vector" and validate
-        if (!body.isMember("vector") || !body["vector"].isArray()) {
-            throw std::runtime_error("Missing or invalid 'vector' key.");
+            res.result(http::status::ok);
+            res.set(http::field::content_type, "application/json");
+            res.body() = oss.str();
+            res.prepare_payload();
         }
+        else if (req.method() == http::verb::post)
+        {
+            // Handle POST request: Perform search
+            // Parse JSON request
+            Json::Value body;
+            std::istringstream req_body_stream(req.body());
+            req_body_stream >> body;
 
-        const Json::Value& query_vector_json = body["vector"];
-        if (query_vector_json.size() != dim) {
-            throw std::runtime_error("Query vector size does not match the dimensions of the dataset.");
+            // Check for "collection" index and provide a default value
+            int vector_index = body.isMember("collection") ? body["collection"].asInt() : 0;
+
+            // Check for "top_n" and provide a default value
+            int top_n = body.isMember("limit") ? body["limit"].asInt() : 5;
+
+            // Check for "vector" and validate
+            if (!body.isMember("vectors") || !body["vectors"].isArray())
+            {
+                throw std::runtime_error("Missing or invalid 'vectors' key.");
+            }
+
+            Json::Value query_vector_json = body["vectors"];
+            if (query_vector_json.size() == 1 && query_vector_json[0].size() == dim)
+            {
+                query_vector_json = query_vector_json[0];
+            }
+            else if (query_vector_json.size() != dim)
+            {
+                throw std::runtime_error("Too many vectors or query vector size does not match the dimensions of the dataset.");
+            }
+
+            std::vector<float> query_vector(dim, 0.0f);
+            for (size_t i = 0; i < query_vector_json.size(); ++i)
+            {
+                query_vector[i] = query_vector_json[static_cast<Json::ArrayIndex>(i)].asFloat();
+            }
+
+            // Validate vector_index
+            if (vector_index < 0 || vector_index >= all_embeddings.size())
+            {
+                throw std::runtime_error("Invalid vector_index: Out of range.");
+            }
+
+            // Retrieve the specified embeddings
+            const Matrix &embeddings = all_embeddings[vector_index];
+
+            // Normalize the query vector
+            Vector query = Eigen::Map<Vector>(query_vector.data(), dim).normalized();
+
+            // Perform brute-force search
+            auto results = parallel_brute_force_search(query, embeddings, top_n, 8);
+
+            // like{'code': 0, 'cost': 6, 'data': [{'distance': -0.01647208, 'id': 'A_4_1_chunk_0'}, {'distance': -0.019615145, 'id': 'A_2_3_chunk_0'}, {'distance': -0.026594205, 'id': 'A_2_4_chunk_0'}]}
+
+
+            // Prepare JSON response
+            Json::Value response;
+            response["data"] = Json::arrayValue;
+            for (const auto &result : results)
+            {
+                Json::Value obj;
+                obj["id"] = result.first;
+                obj["similarity"] = result.second;
+                response["data"].append(obj);
+            }
+
+            // Set HTTP response
+            Json::Value response_body;
+            response_body = response;
+
+            Json::StreamWriterBuilder writer;
+            std::ostringstream oss;
+            std::unique_ptr<Json::StreamWriter> json_writer(writer.newStreamWriter());
+            json_writer->write(response_body, &oss);
+
+            res.result(http::status::ok);
+            res.set(http::field::content_type, "application/json");
+            res.body() = oss.str();
+            res.prepare_payload();
         }
-
-        std::vector<float> query_vector(dim, 0.0f);
-        for (size_t i = 0; i < query_vector_json.size(); ++i) {
-            query_vector[i] = query_vector_json[static_cast<Json::ArrayIndex>(i)].asFloat();
-
+        else
+        {
+            res.result(http::status::method_not_allowed);
+            res.set(http::field::content_type, "text/plain");
+            res.body() = "Method Not Allowed";
+            res.prepare_payload();
         }
-
-        // Validate vector_index
-        if (vector_index < 0 || vector_index >= all_embeddings.size()) {
-            throw std::runtime_error("Invalid vector_index: Out of range.");
-        }
-
-        // Retrieve the specified embeddings
-        const Matrix& embeddings = all_embeddings[vector_index];
-
-        // Normalize the query vector
-        Vector query = Eigen::Map<Vector>(query_vector.data(), dim).normalized();
-
-        // Perform brute-force search
-        auto results = parallel_brute_force_search(query, embeddings, top_n,8);
-
-        // Prepare JSON response
-        Json::Value response(Json::arrayValue);
-        for (const auto& result : results) {
-            Json::Value obj;
-            obj["index"] = result.first;
-            obj["similarity"] = result.second;
-            response.append(obj);
-        }
-
-        // Set HTTP response
-        Json::Value response_body;
-        response_body["results"] = response;
-
-        Json::StreamWriterBuilder writer;
-        std::ostringstream oss;
-        std::unique_ptr<Json::StreamWriter> json_writer(writer.newStreamWriter());
-        json_writer->write(response_body, &oss);
-
-        res.result(http::status::ok);
-        res.set(http::field::content_type, "application/json");
-        res.body() = oss.str();
-        res.prepare_payload();
-    } catch (const std::exception& ex) {
+    }
+    catch (const std::exception &ex)
+    {
         Json::Value error_response;
         error_response["error"] = ex.what();
+        std::cout << "Error: " << ex.what() << "\n";
 
         Json::StreamWriterBuilder writer;
         std::ostringstream oss;
@@ -345,6 +392,7 @@ int main(int argc, char **argv)
 
     int dim = std::stoi(argv[1]);
     int port = std::stoi(argv[2]);
+    std::vector<std::string> collections;
 
     try
     {
@@ -353,6 +401,10 @@ int main(int argc, char **argv)
         for (int i = 3; i < argc; ++i)
         {
             std::string filename = argv[i];
+            // Collect file names
+            std::string collection = filename.substr(filename.find_last_of("/") + 1);
+            collection = collection.substr(0, collection.find(".vec"));
+            collections.push_back(collection);
             int num_vectors = calculate_num_vectors(filename, dim);
             std::cout << "Loading file: " << filename << "\n";
             all_embeddings.push_back(load_vectors_from_file(filename, num_vectors, dim));
@@ -375,7 +427,7 @@ int main(int argc, char **argv)
             http::read(socket, buffer, req);
 
             http::response<http::string_body> res;
-            handle_request(req, res, all_embeddings, dim);
+            handle_request(req, res, all_embeddings, dim, collections);
 
             http::write(socket, res);
         }
