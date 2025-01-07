@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Text, Table
 from sqlalchemy import ForeignKey, LargeBinary, DateTime, MetaData, CheckConstraint
 from sqlalchemy import create_engine, text, func, select, event, distinct
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, Session, aliased
+from sqlalchemy.sql.expression import over, case
 
 from contextlib import contextmanager
 
@@ -407,6 +408,21 @@ class DatabaseUtility:
             vectors = np.append(vectors,np.frombuffer(v[0].value, dtype='float32'))
         return vectors
 
+    def get_items(self):
+        """
+        Get a list of all items, ordered by itemIdx (ascending).
+        :return: List of Item objects
+        """
+        stmt = (
+            select(Item)
+            .order_by(Item.itemIdx.asc())  # Order by itemIdx in ascending order
+        )
+
+        # Execute the query
+        with self.get_session() as session:
+            result = session.execute(stmt).scalars().all()
+            return result
+
     def find_item(self, chunkIdx: int):
         """
         Find an Item by a chunk index.
@@ -430,20 +446,45 @@ class DatabaseUtility:
             return result
 
 
-    def get_items(self):
+    def find_items(self, chunkList: list [int]):
         """
-        Get a list of all items, ordered by itemIdx (ascending).
+        Get a list of all items, referred to by chunk index list. deduplicate.
         :return: List of Item objects
         """
-        stmt = (
-            select(Item)
-            .order_by(Item.itemIdx.asc())  # Order by itemIdx in ascending order
-        )
-
+        # Define a CASE expression for custom ordering
+        order_case = case(
+            {key: i for i, key in enumerate(chunkList)},
+            value=func.ifnull(Chunk.chunkIdx, -1)  # Default case if index_key not in list
+        )        
         # Execute the query
         with self.get_session() as session:
-            result = session.execute(stmt).scalars().all()
-            return result
+            # Query to join Chunk and Item and apply ranking
+            stmt = session.query(
+                Chunk.chunkIdx.label('chunk_idx'),
+                Item.id.label('item_id'),
+                Item.name.label('item_name'),
+                over(
+                    func.row_number(),
+                    partition_by=Item.id,  # Deduplicate by item
+                    order_by=order_case   # Maintain input order
+                ).label('rank')
+            ).join(
+                Item, Chunk.itemId == Item.id
+            ).filter(
+                Chunk.chunkIdx.in_(chunkList)  # Filter only by relevant chunks
+            ).subquery()
+
+            # Final query to select rows with rank = 1
+            final_query = session.query(
+                stmt.c.item_id,
+                stmt.c.item_name,
+                stmt.c.chunk_idx
+                # Item
+            ).filter(
+                stmt.c.rank == 1
+            )
+            results = final_query.all()
+            return results
 
 
     def get_item_by_name(self, name: str = None):
@@ -577,7 +618,7 @@ class DatabaseUtility:
 
 if __name__ == "__main__":
     connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
-    DatabaseUtility.delete_all(connection_string)
+    # DatabaseUtility.delete_all(connection_string)
     db = DatabaseUtility(connection_string)    
 
     layout = db.get_table_layout("items")
