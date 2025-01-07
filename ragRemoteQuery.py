@@ -47,7 +47,8 @@ config = {
     "embProvider":None,
     "llmProvider":None,
     "llmModel":None,
-    "dbProvider":"zilliz"
+    "dbProvider":None,
+    "search": []
 }
 
 def initialize():
@@ -62,8 +63,16 @@ def initialize():
 
     The function also calls `checkDb()` to ensure the database is properly set up.
     """
-    config["dbClient"] = deployUtils.VectorDb(provider=config["dbProvider"])
+    config["dbClient"] = deployUtils.VectorDb(provider=config["dbProvider"],collection=config["dbCollection"])
     checkDb()
+    if config["dbProvider"] == "localsearch":
+        import ragSqlUtils as sq
+        import private_remote as pr
+        connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
+        config["sql"] = {
+            "sq":sq,
+            "db":sq.DatabaseUtility(connection_string)
+        }
     # text stuff
     config["preprocessor"] = textUtils.PreProcessor(config["lang"])
     # models
@@ -93,7 +102,7 @@ def checkDb():
         if collection["code"] != 0:
             print(f"Error on {collection}: {collection['code']}")
             raise ValueError
-        if DEBUG: print("Collection OK:",collection["data"]["collectionName"])
+        if DEBUG: print("Collection OK")
     except Exception as e:
         print("Collection failed",e)
         raise ValueError
@@ -154,6 +163,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--items', default = 5)      # option that takes a value
     parser.add_argument('-l', '--lang',default = "de")      # option that takes a value
+    parser.add_argument('-d', '--dbProvider',default = "zilliz")      # option that takes a value
     parser.add_argument('-c', '--collection',default = "ksk")      # option that takes a value
     parser.add_argument('-P', '--embProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-p', '--llmProvider',default = "deepinfra")      # option that takes a value
@@ -162,11 +172,12 @@ if __name__ == "__main__":
     print(args.items, args.lang, args.collection) 
 
     config["lang"] = args.lang
-    config["dbCollection"] = f"{args.collection}_{args.lang}"
+    config["dbCollection"] = f"{args.collection}"
     config["dbItems"] = int(args.items)
     config["embProvider"] = args.embProvider
     config["llmProvider"] = args.llmProvider
     config["llmModel"] = args.llmModel
+    config["dbProvider"] = args.dbProvider
     if DEBUG: print(config)
     initialize()
 
@@ -177,11 +188,52 @@ if __name__ == "__main__":
         if not followUp:
             embedding = config["embedder"].encode(query)
             searchVector = embedding["data"][0]["embedding"]
-            searchResult = config["dbClient"].searchItem(searchVector, limit=config["dbItems"], fields=["itemId","title","file","meta","text"])
-            if DEBUG: print(searchResult)
-            files = [f["file"] for f in searchResult["data"]]
-            results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= .35]
-            if DEBUG: print(files)
+            if DEBUG: print("search vector:",searchVector)
+            if config["dbProvider"] == "zilliz":
+                searchResult = config["dbClient"].searchItem(searchVector, limit=config["dbItems"], fields=["itemId","title","file","meta","text"])
+                if DEBUG: print(searchResult)
+                files = [f["file"] for f in searchResult["data"]]
+                if DEBUG: print(files)
+                results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= .35]
+            elif config["dbProvider"] == "localsearch":
+                searchResult = config["dbClient"].searchItem(searchVector, limit=20, fields=["itemId","title","file","meta","text"])
+                if DEBUG: print(searchResult)
+                if searchResult == None:
+                    results = []
+                else:
+                    indices = [f["id"] for f in searchResult["data"]]
+                    if DEBUG: print("Indices:",indices)
+                    items = config["sql"]["db"].find_items(indices)
+                    if DEBUG: print(items)
+                    itemIds = [i[0] for i in items][:config["dbItems"]]
+                    # here files is also item names
+                    files = [i[1] for i in items][:config["dbItems"]]
+                    if DEBUG: print(itemIds)
+                    # search for title and summary in one go
+                    titles = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                        filters=[
+                            config["sql"]["sq"].Snippet.lang == config["lang"],
+                            config["sql"]["sq"].Snippet.itemId.in_(itemIds),
+                                config["sql"]["sq"].Snippet.type == "title",
+                                config["sql"]["sq"].Snippet.chunkId == None
+                        ]
+                    )
+                    if DEBUG: print([t.id for t in titles])
+                    summaries = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                        filters=[
+                            config["sql"]["sq"].Snippet.lang == config["lang"],
+                            config["sql"]["sq"].Snippet.itemId.in_(itemIds),
+                                config["sql"]["sq"].Snippet.type == "summary",
+                                config["sql"]["sq"].Snippet.chunkId == None
+                        ]
+                    )
+                    if DEBUG: print([t.id for t in summaries])
+                    results = [(files[i], titles[i].content, summaries[i].content) for i in range(len(itemIds))]
+                   
+                    
+            else:
+                raise ValueError("Unknown dbProvider")
+            
             if len(results) == 0:
                 print("No relevant documents found")
                 query = input("\nEnter your query: ")

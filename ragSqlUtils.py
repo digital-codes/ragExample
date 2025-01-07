@@ -8,8 +8,6 @@ from contextlib import contextmanager
 
 import numpy as np
 
-import private_remote as pr
-
 # Create the Declarative Base
 Base = declarative_base()
 
@@ -184,28 +182,6 @@ def validate_language(mapper, connection, target):
         raise ValueError(msg)
 
 
-
-class Vector(Base):
-    """
-    Represents a vector in the database.
-
-    Attributes:
-        id (int): The primary key of the vector.
-        snipId (int): The foreign key referencing the associated snippet.
-        value (bytes): The binary data representing the vector.
-        snippet (Snippet): The relationship to the Snippet model, back_populated by "vectors".
-    """
-    __tablename__ = 'vectors'
-
-    id = Column(Integer, primary_key=True)
-    snipId = Column(Integer, ForeignKey('snippets.id', ondelete="CASCADE"), nullable=False)
-    value = Column(LargeBinary, nullable=False)  # Blob
-
-    snippet = relationship("Snippet", back_populates="vectors")
-
-Snippet.vectors = relationship("Vector", order_by=Vector.id, back_populates="snippet", cascade="all, delete-orphan")
-
-
 # Database Utility Class
 class DatabaseUtility:
     def __init__(self, connection_string):
@@ -372,41 +348,6 @@ class DatabaseUtility:
         with self.get_session() as session:
             result = session.execute(stmt).scalars().all()
             return result
-
-    def get_chunk_vectors(self):
-        """
-        Get a list of all chunk vectors for a given projectId, ordered by chunkIdx.
-
-        :param session: SQLAlchemy Session object
-        :return: List of ChunkVector objects
-        """
-        chunks = self.get_chunks(projectId = projectId)
-        vectors = np.array([], dtype='float32')
-        for c in chunks:
-            v = self.search(Vector,filters=[Vector.chunkId == c.id])
-            if len(v) != 1:
-                raise ValueError(f"Expected 1 vector for chunk {c.id}, found {len(v)}")
-            vectors = np.append(vectors,np.frombuffer(v[0].value, dtype='float32'))
-        return vectors
-        # write like:
-        # with open("chunk_vectors.vec","wb") as f:
-        #    f.write(v.astype("float32"))
-
-    def get_title_vectors(self):
-        """
-        Get a list of all title vectors for a given projectId, ordered by itemIdx.
-
-        :param session: SQLAlchemy Session object
-        :return: List of ChunkVector objects
-        """
-        items = self.get_items(projectId = projectId)
-        vectors = np.array([], dtype='float32')
-        for i in items:
-            v = self.search(TitleVector,filters=[TitleVector.itemId == i.id])
-            if len(v) != 1:
-                raise ValueError(f"Expected 1 vector for chunk {c.id}, found {len(v)}")
-            vectors = np.append(vectors,np.frombuffer(v[0].value, dtype='float32'))
-        return vectors
 
     def get_items(self):
         """
@@ -617,6 +558,7 @@ class DatabaseUtility:
 
 
 if __name__ == "__main__":
+    import private_remote as pr
     connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
     # DatabaseUtility.delete_all(connection_string)
     db = DatabaseUtility(connection_string)    
@@ -705,22 +647,6 @@ if __name__ == "__main__":
     print(f"Texts: {[(i.content,i.itemId,i.chunkId,i.refIdx) for i in texts]}")
 
 
-    # Create dummy vectors
-    v = np.random.rand(384).astype('float32')
-    binary_data = v.tobytes()
-    # Insert into the database
-    vector1 = Vector(snipId=textIds[0], value=binary_data)
-    v = np.random.rand(384).astype('float32')
-    binary_data = v.tobytes()
-    # Insert into the database
-    vector2 = Vector(snipId=textIds[1], value=binary_data)
-    db.insert(vector1)
-    db.insert(vector2)
-
-    vecs = db.search(Vector)
-    print(f"Vectors: {[i.snipId for i in vecs]}")
-
-
     # Query and print data
     projects = db.search(Project) #.all()
     for project in projects:
@@ -733,11 +659,6 @@ if __name__ == "__main__":
     chunks = db.search(Chunk)
     for chunk in chunks:
         print(f"Chunk Ref: {chunk.itemId}, Index: {chunk.chunkIdx}")
-
-    vectors = db.search(Vector)
-    for vector in vectors:
-        value = np.frombuffer(vector.value, dtype='float32')
-        print(f"Vector for {vector.snipId}: {value[:10]}...")  # Print the first 10 characters of the vector
 
     c = db.find_chunk(1)
     print("No chunk" if c == None else c.id)

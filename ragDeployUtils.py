@@ -540,7 +540,7 @@ class VectorDb:
                 if locCollection in collections:
                     self.collection = collections.index(locCollection)
                 else:
-                    raise ValueError("Invalid collection")
+                    raise ValueError(f"Invalid collection:{locCollection}")
             else:
                 raise ValueError("Service error:",response.status_code)
         else:
@@ -563,6 +563,13 @@ class VectorDb:
             else:
                 print(response.status_code)
                 return None
+        elif self.provider == "localsearch":
+            self.url = cfg.localsearch["url"]
+            response = requests.get(self.url)
+            if response.status_code == 200:
+                return {"code": 0}
+            else:
+                raise ValueError("Service error:",response.status_code)
         else:
             raise ValueError("Invalid provider")
 
@@ -698,6 +705,11 @@ class VectorDb:
             IP      Larger IP distances indicate higher similarity.
             COSINE  Larger cosine value indicates higher similarity.
         """
+        if DEBUG:
+            print(len(vectors))
+            if len(vectors) == 1:
+                print(len(vectors[0]))
+                
         if self.provider == "zilliz":
 
             hdrs = {
