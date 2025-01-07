@@ -5,6 +5,7 @@ import time
 from ragInstrumentation import measure_execution_time
 
 import private_remote as pr
+import ragConfig as cfg
 
 DEBUG = False
 
@@ -36,28 +37,27 @@ class Embedder:
     """
     @measure_execution_time
     def __init__(self, provider: str = "deepinfra"):
-        self.size = Embedder.get_size() #384 # default size for all models
         if provider == "deepinfra":
             self.api_key = pr.deepInfra["apiKey"]
-            self.model = pr.deepInfra["embMdl"]
-            self.url = pr.deepInfra["embUrl"]
+            self.model = cfg.deepInfra["embMdl"]
+            self.url = cfg.deepInfra["embUrl"]
             self.engine = None
         elif provider == "huggingface":
             self.api_key = pr.huggingface["apiKey"]
-            self.model = pr.huggingface["embMdl"]
-            self.url = pr.huggingface["embUrl"]
+            self.model = cfg.huggingface["embMdl"]
+            self.url = cfg.huggingface["embUrl"]
             self.engine = None
             print("Warning: Huggingface embeddings are non-standard.")
         elif provider == "openai":
             self.api_key = pr.openAi["apiKey"]
-            self.model = pr.openAi["embMdl"]
-            self.url = pr.openAi["embUrl"]
+            self.model = cfg.openAi["embMdl"]
+            self.url = cfg.openAi["embUrl"]
             self.engine = None
             print("Warning: OpenAI embeddings are non-standard.")
         elif provider == "localllama":
             self.api_key = pr.localllama["apiKey"]
-            self.model = pr.localllama["embMdl"]
-            self.url = pr.localllama["embUrl"]
+            self.model = cfg.localllama["embMdl"]
+            self.url = cfg.localllama["embUrl"]
         elif provider == "local":
             try:
                 from sentence_transformers import SentenceTransformer
@@ -70,14 +70,19 @@ class Embedder:
         else:
             raise ValueError("Invalid provider")
         self.provider = provider
+        self.size = self.get_size() 
 
-    @staticmethod
-    def get_size():
+    def get_size(self):
         """
         Returns:
             int: The size of the embedding vectors.
         """
-        return 384
+        if "all-minilm-l12" in self.model.lower():
+            return 384
+        elif "jina-embeddings-v2-base" in self.model.lower():
+            return 768
+        else:
+            raise ValueError("Unknown model") 
 
     @measure_execution_time
     def encode(self, input):
@@ -157,29 +162,29 @@ class Llm:
     def __init__(self, provider: str = "deepinfra", lang="de", model=None):
         if provider == "deepinfra":
             self.api_key = pr.deepInfra["apiKey"]
-            self.model = pr.deepInfra["lngMdl"]
-            self.url = pr.deepInfra["lngUrl"]
+            self.model = cfg.deepInfra["lngMdl"]
+            self.url = cfg.deepInfra["lngUrl"]
         elif provider == "openai":
             self.api_key = pr.openAi["apiKey"]
-            self.model = pr.openAi["lngMdl"]
-            self.url = pr.openAi["lngUrl"]
+            self.model = cfg.openAi["lngMdl"]
+            self.url = cfg.openAi["lngUrl"]
         elif provider == "localllama":
             self.api_key = pr.localllama["apiKey"]
-            self.model = pr.localllama["lngMdl"]
-            self.url = pr.localllama["lngUrl"]
+            self.model = cfg.localllama["lngMdl"]
+            self.url = cfg.localllama["lngUrl"]
         elif provider == "huggingface":
             if model == None:
                 raise ValueError("Huggingface model not provided")
-            model_index = pr.huggingface["lngMdl"].index(model)
+            model_index = cfg.huggingface["lngMdl"].index(model)
             if model_index == -1:
                 raise ValueError("Invalid model")
             self.api_key = pr.huggingface["apiKey"]
             # dedicated endpoints use different model name
-            if pr.huggingface["endpoint"][model_index] == "dedicated":
+            if cfg.huggingface["endpoint"][model_index] == "dedicated":
                 self.model = "tgi"        
             else:
-                self.model = pr.huggingface["lngMdl"][model_index]
-            self.url = pr.huggingface["lngUrl"][model_index]
+                self.model = cfg.huggingface["lngMdl"][model_index]
+            self.url = cfg.huggingface["lngUrl"][model_index]
             # need to check endpoint availability
             testUrl = self.url.split("/v1")[0]
             while True:
@@ -525,7 +530,7 @@ class VectorDb:
             self.api_key = pr.zilliz["apiKey"]
             self.lang = "german" if lang == "de" else "english"
             self.collection = f'{collection}_{lang}'
-            self.url = f'https://{pr.zilliz["cluster"]}.serverless.{pr.zilliz["region"]}.cloud.zilliz.com'
+            self.url = f'https://{cfg.zilliz["cluster"]}.serverless.{cfg.zilliz["region"]}.cloud.zilliz.com'
         else:
             raise ValueError("Invalid provider")
 
