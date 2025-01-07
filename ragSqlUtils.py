@@ -752,3 +752,8 @@ if __name__ == "__main__":
     for chunk in results:
         print(f"Chunk, Item: {chunk.itemId}, Index: {chunk.chunkIdx}")
         #print(f"Chunk, Item: {item.id}, Index: {chunk.chunkIdx}")
+
+    # search titles from item list
+    titles = db.search(Snippet,filters=[Snippet.itemId.in_([1,2]),Snippet.type == "title",Snippet.lang=="de"])
+    print(f"Titles: {[t.content for t in titles]}")
+    
