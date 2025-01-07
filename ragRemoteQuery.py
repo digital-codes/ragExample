@@ -63,9 +63,13 @@ def initialize():
 
     The function also calls `checkDb()` to ensure the database is properly set up.
     """
-    config["dbClient"] = deployUtils.VectorDb(provider=config["dbProvider"],collection=config["dbCollection"])
-    checkDb()
     if config["dbProvider"] == "localsearch":
+        config["dbSearch"] = {
+            "title": deployUtils.VectorDb(provider=config["dbProvider"],collection=f'{config["dbCollection"]}_title'),
+            #"summary": deployUtils.VectorDb(provider=config["dbProvider"],collection=f'{config["dbCollection"]}_summary'),
+            "chunk": deployUtils.VectorDb(provider=config["dbProvider"],collection=f'{config["dbCollection"]}_chunk')
+        }
+        config["dbClient"] = config["dbSearch"]["title"]
         import ragSqlUtils as sq
         import private_remote as pr
         connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
@@ -73,6 +77,9 @@ def initialize():
             "sq":sq,
             "db":sq.DatabaseUtility(connection_string)
         }
+    else:
+        config["dbClient"] = deployUtils.VectorDb(provider=config["dbProvider"],collection=config["dbCollection"])
+    checkDb()
     # text stuff
     config["preprocessor"] = textUtils.PreProcessor(config["lang"])
     # models
@@ -196,12 +203,21 @@ if __name__ == "__main__":
                 if DEBUG: print(files)
                 results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= .35]
             elif config["dbProvider"] == "localsearch":
-                searchResult = config["dbClient"].searchItem(searchVector, limit=20, fields=["itemId","title","file","meta","text"])
+                tsearchResult = config["dbSearch"]["title"].searchItem(searchVector, limit=config["dbItems"]*2)
+                csearchResult = config["dbSearch"]["chunk"].searchItem(searchVector, limit=config["dbItems"]*5)
+                tsearchResult = tsearchResult["data"] if tsearchResult != None else []
+                csearchResult = csearchResult["data"] if csearchResult != None else []
+                if DEBUG: print(tsearchResult,csearchResult)
+                print("T",tsearchResult)
+                print("C",csearchResult)
+                # wrong. csearch returns chunk indices, tsearch returns title indices
+                # TODO: find chunk and title item id in separate lists and merge them
+                searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
                 if DEBUG: print(searchResult)
-                if searchResult == None:
-                    results = []
-                else:
-                    indices = [f["id"] for f in searchResult["data"]]
+                print("S",searchResult)
+                if len(searchResult) > 0:
+                    #indices = [f["id"] for f in searchResult["data"]]
+                    indices = [f["id"] for f in searchResult]
                     if DEBUG: print("Indices:",indices)
                     items = config["sql"]["db"].find_items(indices)
                     if DEBUG: print(items)
@@ -209,7 +225,7 @@ if __name__ == "__main__":
                     # here files is also item names
                     files = [i[1] for i in items][:config["dbItems"]]
                     if DEBUG: print(itemIds)
-                    # search for title and summary in one go
+                    # search for title and fulltext in one go
                     titles = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
                         filters=[
                             config["sql"]["sq"].Snippet.lang == config["lang"],
@@ -219,17 +235,18 @@ if __name__ == "__main__":
                         ]
                     )
                     if DEBUG: print([t.id for t in titles])
-                    summaries = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                    fulltexts = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
                         filters=[
                             config["sql"]["sq"].Snippet.lang == config["lang"],
                             config["sql"]["sq"].Snippet.itemId.in_(itemIds),
-                                config["sql"]["sq"].Snippet.type == "summary",
+                                config["sql"]["sq"].Snippet.type == "content",
                                 config["sql"]["sq"].Snippet.chunkId == None
                         ]
                     )
-                    if DEBUG: print([t.id for t in summaries])
-                    results = [(files[i], titles[i].content, summaries[i].content) for i in range(len(itemIds))]
-                   
+                    if DEBUG: print([t.id for t in fulltexts])
+                    results = [(files[i], titles[i].content, fulltexts[i].content) for i in range(len(itemIds))]
+                else:
+                    results = []
                     
             else:
                 raise ValueError("Unknown dbProvider")
