@@ -51,7 +51,11 @@ localllama = {
     "embUrl":"http://localhost:8085/v1/embeddings",
     "embMdl":"jina-embeddings-v2-base-de-Q5_K_M",
     "lngUrl":"http://localhost:8080/v1/chat/completions",
-    "lngMdl": "Llama-3.2-3B-Instruct-Q4_K_M",
-    "collections":["ksk_de_title","ksk_en_title","ksk_de_chunks","ksk_en_chunks","ksk_de_summary","ksk_en_summary"]
+    "lngMdl": "Llama-3.2-3B-Instruct-Q4_K_M"
 }
 
+# local vector search server
+localsearch = {
+    "url":"http://localhost:9001/",
+    "collections":["ksk_de_title","ksk_en_title","ksk_de_chunks","ksk_en_chunks","ksk_de_summary","ksk_en_summary"]
+}
