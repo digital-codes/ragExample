@@ -47,6 +47,10 @@ huggingface = {
 }
 
 # local llama.cpp server
+# start like so with jina embeddings
+# /opt/llama/cpu/bin/llama-server -m /opt/llama/models/jina-embeddings-v2-base-de-Q5_K_M.gguf -c 0 -b 1000 -ub 1000  --embeddings --port 8085   
+# or 
+# /opt/llama/cpu/bin/llama-server -m /opt/llama/models/jina-embeddings-v2-base-de-Q5_K_M.gguf -c 0 -b 1000 -ub 1000  --embeddings --port 8085 --log-disable
 localllama = {
     "embUrl":"http://localhost:8085/v1/embeddings",
     "embMdl":"jina-embeddings-v2-base-de-Q5_K_M",

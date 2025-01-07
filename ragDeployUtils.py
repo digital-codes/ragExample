@@ -536,7 +536,7 @@ class VectorDb:
             if response.status_code == 200:
                 collections = response.json()
                 # localize collection
-                locCollection = f'{collection}-{lang}'
+                locCollection = f'{collection}_{lang}'
                 if locCollection in collections:
                     self.collection = collections.index(locCollection)
                 else:
