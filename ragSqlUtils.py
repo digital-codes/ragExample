@@ -6,7 +6,9 @@ from sqlalchemy.sql.expression import over, case
 
 from contextlib import contextmanager
 
-import numpy as np
+from graphviz import Digraph
+
+
 
 # Create the Declarative Base
 Base = declarative_base()
@@ -139,7 +141,7 @@ class Snippet(Base):
         itemId (int): Foreign key referencing the associated item. Nullabe with on delete cascade
         chunkId (int): Foreign key referencing the associated chunk. Nullable with on delete cascade
         lang (str): The language of the text.
-        type (str): Type of the text. Can be 'title', 'summary' or 'text'.
+        type (str): Type of the text. Can be 'title', 'summary', 'fact' or 'text'.
         content (str): The text content of the chunk. Must be in project.langs
         item (Item): Relationship to the Item model, back_populated by 'chunks'.
         chunk (Chunk): Relationship to the Item model, back_populated by 'chunks'.
@@ -157,7 +159,7 @@ class Snippet(Base):
     chunk = relationship("Chunk", back_populates="snippets")
 
     __table_args__ = (
-        CheckConstraint("type IN ('content', 'title', 'summary')", name='check_type_in_list'),
+        CheckConstraint("type IN ('content', 'title', 'summary','fact')", name='check_type_in_list'),
     )
     
 Item.snippets = relationship("Snippet", order_by=Snippet.id, back_populates="item", cascade="all, delete-orphan")
@@ -555,6 +557,34 @@ class DatabaseUtility:
                 conn.close()
 
         engine.dispose()
+
+    # Define function to generate Graphviz diagram
+    # Generate UML diagram like so
+    #   import ragSqlUtils as sq
+    #   uml_diagram = sq.DatabaseUtility.create_uml()
+    #   uml_diagram.render('uml_diagram', view=True)  # Save and open diagram
+    @staticmethod
+    def create_uml():
+        dot = Digraph(comment='UML Diagram', format='png')
+        
+        classes = [Project, Item, Tag, Chunk, Snippet]
+        # Create nodes for classes
+        for cls in classes:
+            table_name = cls.__tablename__
+            columns = [f"{col.name}: {col.type}" for col in cls.__table__.columns]
+            relationships = [rel.key for rel in cls.__mapper__.relationships]
+            
+            # Add table node
+            label = f"{{ {table_name} | {'\\l'.join(columns)} | Relationships: {'\\l'.join(relationships)} }}"
+            dot.node(table_name, label=label, shape='record')
+        
+        # Create relationships (edges)
+        for cls in classes:
+            table_name = cls.__tablename__
+            for rel in cls.__mapper__.relationships:
+                dot.edge(table_name, rel.target.name, label=f"1-to-{rel.direction.name.lower()}")
+        
+        return dot
 
 
 if __name__ == "__main__":

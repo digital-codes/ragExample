@@ -8,7 +8,8 @@ zilliz = {
 deepInfra = {
     "embUrl":"https://api.deepinfra.com/v1/openai/embeddings",
     "lngUrl":"https://api.deepinfra.com/v1/openai/chat/completions",
-    "embMdl": "sentence-transformers/all-MiniLM-L12-v2",
+    "embMdl_0": "sentence-transformers/all-MiniLM-L12-v2",
+    "embMdl": "BAAI/bge-m3",
     "lngMdl": "meta-llama/Llama-3.3-70B-Instruct-Turbo"
 }
 
@@ -53,7 +54,7 @@ huggingface = {
 # /opt/llama/cpu/bin/llama-server -m /opt/llama/models/jina-embeddings-v2-base-de-Q5_K_M.gguf -c 0 -b 1000 -ub 1000  --embeddings --port 8085 --log-disable
 localllama = {
     "embUrl":"http://localhost:8085/v1/embeddings",
-    "embMdl":"jina-embeddings-v2-base-de-Q5_K_M",
+    "embMdl":"bge-m3-Q4_K_M",
     "lngUrl":"http://localhost:8080/v1/chat/completions",
     "lngMdl": "Llama-3.2-3B-Instruct-Q4_K_M"
 }

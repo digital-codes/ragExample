@@ -274,3 +274,9 @@ if __name__ == "__main__":
 
     
     
+# text = db.search(sq.Snippet,filters=[sq.Snippet.itemId==19,sq.Snippet.type=='content',sq.Snippet.chunkId==None])
+# tx = text[0].content
+# x = llm.summarizeJson(tx)
+# xj = json.loads(x[0][7:][:-4])
+# xj["facts"]
+# xj["summary"]
