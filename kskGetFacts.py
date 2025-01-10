@@ -34,28 +34,40 @@ for text in itemTexts:
     #print(f"{tx}")
     try:
         wrappedFacts = llm_de.getFacts(tx)[0].replace("`","")
-        print(f"WrappedFacts: {wrappedFacts}")
+        #print(f"WrappedFacts: {wrappedFacts}")
         # we have a leading "json" sometimes that we need to remove
         # so make sure we remove everything before the first [
         # or before the first { and extract element 0 if []
         if "[" in wrappedFacts:
-            encodedFacts = wrappedFacts.split("[")[-1].split("]")[0].strip()
+            encodedFacts = wrappedFacts[wrappedFacts.find("["):wrappedFacts.find("]")+1].strip()
+            #encodedFacts = wrappedFacts.split("[")[-1].split("]")[0].strip()
             #encodedFacts = encodedFacts[encodedFacts.find("["):]
+            facts_ = json.loads(f"{encodedFacts}")
+            facts = []
+            for fact in facts_:
+                if 'category' in fact and 'fact' in fact:
+                    facts.append({fact['category']: fact['fact']})
+                else:
+                    facts.append(fact)
         else:
             encodedFacts = wrappedFacts[wrappedFacts.find("{"):wrappedFacts.find("}")+1].strip()
-        facts = json.loads(f"{encodedFacts}")
+            facts_ = json.loads(f"{encodedFacts}")
+            facts = []
+            for fact in facts_:
+                facts.append({fact:facts_[fact]})
+        #facts = json.loads(f"{encodedFacts}")
         print(f"Facts: {len(facts)},{facts}")
     except Exception as e:
         print(f"Error: {e},{wrappedFacts},{encodedFacts}")
-        exit()
         continue
 
     for fact in facts:
-        print(f"Fact: {fact}")
+        text = json.dumps(fact)
         try:
-            db.insert(sq.Snippet(itemId=itemId,refIdx=itemIdx,lang="de",type="fact",content=json.dumps(fact)))
+            #db.insert(sq.Snippet(itemId=itemId,refIdx=itemIdx,lang="de",type="fact",content=json.dumps(fact)))
+            db.insert(sq.Snippet(itemId=itemId,refIdx=itemIdx,lang="de",type="fact",content=text))
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error: {e}: {fact}")
             continue
     
 
