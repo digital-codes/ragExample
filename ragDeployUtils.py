@@ -373,6 +373,61 @@ class Llm:
             return None
 
     @measure_execution_time
+    def getFacts(self, text):
+        """
+    Extract facts from the given text using an external API.
+
+        Args:
+            text (str): The text to be summarized.
+
+        Returns:
+            tuple: A tuple containing the summarized text (str) and the total number of tokens used (int) if the request is successful.
+            None: If the request fails.
+
+        Raises:
+            requests.exceptions.RequestException: If there is an issue with the HTTP request.
+
+        Decorators:
+            measure_execution_time: Measures the execution time of the function.
+
+        Notes:
+            - The function sends a POST request to an external API with the provided text and other parameters.
+            - The API key and other configurations are expected to be set as instance variables.
+            - The function prints the query if DEBUG mode is enabled.
+            
+        """
+        hdrs = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+        richQuery = f"""
+        You are an intelligent assistant.
+        Extract the key facts from the following {self.lang} text for the following 
+        categories: impact, cost, funding, human resources, dates.
+        {text}
+        Respond in json with a list of facts as key-value pairs "category":"exctracted fact".
+        Use {self.lang} for fact values.
+        Use english for category names: impact, cost, funding, hr, dates. Omit categories with no facts.
+        Do not add comments to the json response.
+        """
+        data = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": richQuery, "temperature": self.temperature}],
+        }
+        if DEBUG:
+            print(richQuery)
+        if self.provider == "huggingface":
+            data["stream"] = False
+        response = requests.post(self.url, headers=hdrs, json=data)
+        if response.status_code == 200:
+            data = response.json()
+            text = data["choices"][0]["message"]["content"].strip()
+            tokens = data["usage"]["total_tokens"]
+            return text, tokens
+        else:
+            return None
+
+    @measure_execution_time
     def preview(self, text, size=50):
         """
     Makes a very compact preview of the given text using an external API.
