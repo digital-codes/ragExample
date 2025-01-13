@@ -11,7 +11,7 @@
  *
  * Usage:
  * @code
- * g++ -o annService annService.cpp -O3 -I/usr/include/eigen3 -I /usr/include/boost -l boost_json
+ *  g++ -o annService annService.cpp -O3 -I/usr/include/eigen3 -I /usr/include/boost  -I /usr/include/jsoncpp/ -l jsoncpp
  * ./annService <dimension> <port> <file1> [file2 ... fileN]
  * @endcode
  *
@@ -73,7 +73,8 @@ using tcp = boost::asio::ip::tcp;
 
 #include <sys/stat.h>
 
-// g++ -o annService annService.cpp -O3 -I/usr/include/eigen3 -I /usr/include/boost -l jsoncpp
+// g++ -o annService annService.cpp -O3 -I/usr/include/eigen3 -I /usr/include/boost  -I /usr/include/jsoncpp/ -l jsoncpp
+
 
 // Type aliases
 using Vector = Eigen::VectorXf;

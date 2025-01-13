@@ -1,0 +1,235 @@
+Streaming OFF 
+kugel@tux3:~/temp$  http -v -j post https://api.deepinfra.com/v1/openai/chat/completions messages:='[{"role":"user","content":"what is llama","stream":"true"}]' authorization:"Bearer lNZ2DVyMAUDvdxRNSTuFLL9xmII9IrmR" model="meta-llama/Llama-3.3-70B-Instruct-Turbo" stream="false" 
+POST /v1/openai/chat/completions HTTP/1.1
+Accept: application/json, */*;q=0.5
+Accept-Encoding: gzip, deflate, br
+Connection: keep-alive
+Content-Length: 149
+Content-Type: application/json
+Host: api.deepinfra.com
+User-Agent: HTTPie/3.2.3
+authorization: Bearer lNZ2DVyMAUDvdxRNSTuFLL9xmII9IrmR
+
+{
+    "messages": [
+        {
+            "content": "what is llama",
+            "role": "user",
+            "stream": "true"
+        }
+    ],
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "stream": "false"
+}
+
+
+HTTP/1.1 200 OK
+Connection: keep-alive
+Content-Length: 2735
+Content-Type: application/json
+Date: Mon, 13 Jan 2025 08:43:31 GMT
+server: uvicorn
+x-robots-tag: noindex
+
+{
+    "choices": [
+        {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+                "content": "A llama (Lama glama) is a domesticated mammal that belongs to the camelid family, which also includes camels, alpacas, guanacos, and vicuñas. Llamas are native to South America, specifically the Andean region, and have been used as pack animals, wool producers, and companions for thousands of years.\n\nHere are some interesting facts about llamas:\n\n1. **Appearance**: Llamas have a distinctive banana-shaped ears, a long neck, and a soft, woolly coat that can be brown, gray, white, or a combination of these colors. They can weigh between 280 and 450 kg (620-990 lb) and reach a height of 1.7 to 1.9 meters (5.6-6.2 feet) at the shoulder.\n2. **Behavior**: Llamas are social animals and live in herds in the wild. They are known for their calm and gentle nature, but can become defensive if they feel threatened or scared. They communicate with each other through a variety of sounds, including humming, grunting, and clucking.\n3. **Uses**: Llamas have been used as pack animals for centuries, carrying goods and supplies across the Andes. They are also valued for their soft wool, which is used to make clothing, hats, and other textiles. Additionally, llamas are used as guard animals to protect sheep and other livestock from predators.\n4. **Intelligence**: Llamas are considered to be highly intelligent animals, known for their problem-solving abilities and memory. They can learn to perform tasks and respond to commands, making them popular as pets and working animals.\n5. **Diet**: Llamas are herbivores and feed on grasses, plants, and grains. They have a unique digestive system that allows them to break down and extract nutrients from plant material more efficiently than many other animals.\n6. **Reproduction**: Llamas breed in the spring and summer, and females give birth to a single offspring after a gestation period of approximately 11 months. Baby llamas, called crias, are able to walk and run within the first hour of birth and are weaned after about 6 months.\n7. **Lifespan**: Llamas can live for 20-30 years, depending on factors such as nutrition, health, and living conditions.\n\nIn recent years, llamas have gained popularity as therapy animals, search and rescue animals, and even social media stars! Their gentle nature, intelligence, and adorable appearance have made them a beloved animal among many people around the world.",
+                "name": null,
+                "role": "assistant",
+                "tool_calls": null
+            }
+        }
+    ],
+    "created": 1736757811,
+    "id": "chatcmpl-e1a60b0b66d44a9bac7cb968bd08b809",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "object": "chat.completion",
+    "usage": {
+        "completion_tokens": 536,
+        "estimated_cost": 0.00016236,
+        "prompt_tokens": 13,
+        "total_tokens": 549
+    }
+}
+
+
+
+
+
+
+Streaming ON 
+kugel@tux3:~/temp$  http -v -j post https://api.deepinfra.com/v1/openai/chat/completions messages:='[{"role":"user","content":"what is llama","stream":"true"}]' authorization:"Bearer lNZ2DVyMAUDvdxRNSTuFLL9xmII9IrmR" model="meta-llama/Llama-3.3-70B-Instruct-Turbo" stream="true" 
+POST /v1/openai/chat/completions HTTP/1.1
+Accept: application/json, */*;q=0.5
+Accept-Encoding: gzip, deflate, br
+Connection: keep-alive
+Content-Length: 148
+Content-Type: application/json
+Host: api.deepinfra.com
+User-Agent: HTTPie/3.2.3
+authorization: Bearer lNZ2DVyMAUDvdxRNSTuFLL9xmII9IrmR
+
+{
+    "messages": [
+        {
+            "content": "what is llama",
+            "role": "user",
+            "stream": "true"
+        }
+    ],
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "stream": "true"
+}
+
+
+HTTP/1.1 200 OK
+Connection: keep-alive
+Content-Type: text/event-stream; charset=utf-8
+Date: Mon, 13 Jan 2025 08:38:42 GMT
+Transfer-Encoding: chunked
+cache-control: no-store
+server: uvicorn
+x-robots-tag: noindex
+
+data: {
+    "choices": [
+        {
+            "delta": {
+                "content": "",
+                "role": "assistant",
+                "tool_calls": null
+            },
+            "finish_reason": null,
+            "index": 0
+        }
+    ],
+    "created": 1736757522,
+    "id": "chatcmpl-RK7MQJvFyaVYcTDYW4e8sDdk",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "object": "chat.completion.chunk",
+    "usage": null
+}
+
+data: {
+    "choices": [
+        {
+            "delta": {
+                "content": "A",
+                "role": "assistant",
+                "tool_calls": null
+            },
+            "finish_reason": null,
+            "index": 0
+        }
+    ],
+    "created": 1736757522,
+    "id": "chatcmpl-RK7MQJvFyaVYcTDYW4e8sDdk",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "object": "chat.completion.chunk",
+    "usage": null
+}
+
+data: {
+    "choices": [
+        {
+            "delta": {
+                "content": " llama",
+                "role": "assistant",
+                "tool_calls": null
+            },
+            "finish_reason": null,
+            "index": 0
+        }
+    ],
+    "created": 1736757522,
+    "id": "chatcmpl-RK7MQJvFyaVYcTDYW4e8sDdk",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "object": "chat.completion.chunk",
+    "usage": null
+}
+
+data: {
+    "choices": [
+        {
+            "delta": {
+                "content": " (",
+                "role": "assistant",
+                "tool_calls": null
+            },
+            "finish_reason": null,
+            "index": 0
+        }
+    ],
+    "created": 1736757522,
+    "id": "chatcmpl-RK7MQJvFyaVYcTDYW4e8sDdk",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "object": "chat.completion.chunk",
+    "usage": null
+}
+
+...
+
+data: {
+    "choices": [
+        {
+            "delta": {
+                "content": ".",
+                "role": "assistant",
+                "tool_calls": null
+            },
+            "finish_reason": null,
+            "index": 0
+        }
+    ],
+    "created": 1736757552,
+    "id": "chatcmpl-Ryi8joYcxSof3aFbXjs0jr5j",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "object": "chat.completion.chunk",
+    "usage": null
+}
+
+data: {
+    "choices": [
+        {
+            "delta": {
+                "content": "",
+                "role": "assistant",
+                "tool_calls": null
+            },
+            "finish_reason": null,
+            "index": 0
+        }
+    ],
+    "created": 1736757552,
+    "id": "chatcmpl-Ryi8joYcxSof3aFbXjs0jr5j",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "object": "chat.completion.chunk",
+    "usage": null
+}
+
+data: {
+    "choices": [
+        {
+            "delta": {},
+            "finish_reason": "stop",
+            "index": 0
+        }
+    ],
+    "created": 1736757552,
+    "id": "chatcmpl-Ryi8joYcxSof3aFbXjs0jr5j",
+    "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+    "object": "chat.completion.chunk",
+    "usage": {
+        "completion_tokens": 593,
+        "estimated_cost": 0.00017946,
+        "prompt_tokens": 13,
+        "total_tokens": 606
+    }
+}
+
+data: [DONE]
+

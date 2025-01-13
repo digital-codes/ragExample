@@ -9,9 +9,34 @@
 #include <faiss/IndexFlat.h>
 #include <faiss/utils/utils.h>
 
+// faiss:
+// https://github.com/facebookresearch/faiss
 
 // -O3 important!
-// g++ -O3 -o annBench annBench.cpp -I ./faissLib/include/ -L ./faissLib/lib64/ -lfaiss -fopenmp  -lopenblas -I /usr/include/eigen3
+// use -l faiss (generic gpu support) or -l faiss_avx2. on intel generic appears to be faster
+// results on tux3 (new intel i9) vs akudesk (old intel i7)
+/*
+kugel@tux3:~/temp/py/ragExample/search$ ./annBench 
+FAISS is compiled with GPU support: GENERIC 
+Number of faiss threads used: 16
+Benchmarking with 1000000 vectors of dimension 768
+Creating embeddings time: 4439 ms
+Parallel Brute-force time: 194 ms
+Faiss indexing time: 1200 ms
+faiss searching time: 1621 ms
+
+kugel@aku-desk:~/work/py/ragExample/search$ ./annBench 
+FAISS is compiled with GPU support: GENERIC 
+Number of faiss threads used: 8
+Benchmarking with 1000000 vectors of dimension 768
+Creating embeddings time: 7948 ms
+Parallel Brute-force time: 3179 ms
+Faiss indexing time: 1522 ms
+faiss searching time: 1929 ms
+
+new intel parallel brute force is faster than faiss, old intel faiss is faster than parallel brute force
+*/
+// g++ -O3 -o annBench annBench.cpp -I ./faissLib/include/ -L ./faissLib/lib64/ -lfaiss_avx2 -fopenmp  -lopenblas -I /usr/include/eigen3
 
 // Type aliases for simplicity
 using Vector = Eigen::VectorXf;
