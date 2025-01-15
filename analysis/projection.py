@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -64,3 +65,17 @@ sns.heatmap(
 plt.title("Feature Contributions to Principal Components", fontsize=16)
 plt.tight_layout()
 plt.show()
+
+# Similarity Heatmap
+similarity_matrix = cosine_similarity(scaled_data)
+plt.figure(figsize=(12, 10))
+sns.heatmap(
+    similarity_matrix, cmap="viridis", xticklabels=False, yticklabels=False, cbar=True
+)
+plt.title("Cosine Similarity Heatmap", fontsize=16)
+plt.xlabel("Activities")
+plt.ylabel("Activities")
+plt.tight_layout()
+plt.show()
+
+
