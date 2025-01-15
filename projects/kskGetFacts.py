@@ -57,11 +57,23 @@ for text in itemTexts:
                 facts.append({fact:facts_[fact]})
         #facts = json.loads(f"{encodedFacts}")
         print(f"Facts: {len(facts)},{facts}")
+        # iterate over fact and merge same category into one
+        mergedFacts = []
+        for fact in facts:
+            key = list(fact.keys())[0]
+            found = False
+            for mergedFact in mergedFacts:
+                if key in mergedFact:
+                    mergedFact[key] = (f"{mergedFact[key]}. {fact[key]}")
+                    found = True
+                    break
+            if not found:
+                mergedFacts.append({key:fact[key]})
     except Exception as e:
-        print(f"Error: {e},{wrappedFacts},{encodedFacts}")
+        print(f"Error: {e},{wrappedFacts},{encodedFacts},{mergedFacts}")
         continue
 
-    for fact in facts:
+    for fact in mergedFacts:
         text = json.dumps(fact)
         try:
             #db.insert(sq.Snippet(itemId=itemId,refIdx=itemIdx,lang="de",type="fact",content=json.dumps(fact)))
