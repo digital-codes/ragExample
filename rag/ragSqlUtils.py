@@ -8,6 +8,8 @@ from contextlib import contextmanager
 
 from graphviz import Digraph
 
+import pandas as pd
+
 
 
 # Create the Declarative Base
@@ -586,6 +588,16 @@ class DatabaseUtility:
         
         return dot
 
+    @staticmethod
+    def dataFrame(type ,query):
+        """
+        Convert a query to a pandas dataframe
+        """
+        if query == None or len(query) == 0:
+            return pd.DataFrame()
+        cols = [c.name for c in type.__table__.columns]
+        dt = [ {col:getattr(item,col) for col in cols } for item in query]
+        return pd.DataFrame(dt)
 
 if __name__ == "__main__":
     import private_remote as pr
