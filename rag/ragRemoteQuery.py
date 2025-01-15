@@ -84,6 +84,11 @@ def initialize():
     config["preprocessor"] = textUtils.PreProcessor(config["lang"])
     # models
     config["embedder"] = deployUtils.Embedder(provider=config["embProvider"])
+    # need to check embedder for zilliz, due to stored embeddings with all-minilm12-v2
+    if config["dbProvider"] == "zilliz":
+        config["embedder"].model = "sentence-transformers/all-MiniLM-L12-v2"
+        if DEBUG: print("Embedder changed to MiniLM for Zilliz")
+        
     # llm
     config["llm"] = deployUtils.Llm(lang=config["lang"],provider=config["llmProvider"],model=config["llmModel"])
 

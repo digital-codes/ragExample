@@ -6,6 +6,7 @@ This module provides a decorator to log query into database.
 import time
 
 DEBUG = True
+LOG = False
 
 def measure_execution_time(func):
     """
@@ -62,9 +63,10 @@ def log_query(func):
         a = list(args)
         with open("query_log.txt", "a") as logfile:
             current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-            logfile.write(f"{current_time} - Function: {func.__name__}\n")
-            logfile.write(f"  Result: {result}\n")
-            logfile.write(f"  Params: {a}\n")
+            if LOG:
+                logfile.write(f"{current_time} - Function: {func.__name__}\n")
+                logfile.write(f"  Result: {result}\n")
+                logfile.write(f"  Params: {a}\n")
         if DEBUG: 
             print(fn)
             #print(f"{fn},  Params: {a},Result: {result}")
