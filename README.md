@@ -1,6 +1,8 @@
 # ragExample
 Example for retrieval augmented genereration (RAG)
 
+**This is very much work in progress**
+
 ## Tools
 
 RAG fundamentals: combine LLM with knowledge base
@@ -9,6 +11,12 @@ RAG fundamentals: combine LLM with knowledge base
  * LLM: locally installed e.g. via Ollama, **OpenAI**
 
 ### Search engines
+
+**Latest**
+Local search: parallel brute force and faiss indexing 
+brute force good on modern machine up to 1M vectors. Faiss faster on older machines. See [search](./search)
+
+
 
 Tested [chromadb](https://docs.trychroma.com/) and [elasticsearch](https://www.elastic.co/)
 
@@ -22,7 +30,15 @@ Elasticsearch provided better results, might be related to embedding algorithm
 Elasticsearch needs more than 8GB of memory (dies on cloud VM). 
 Chromadb works well on same machine (in principle)
 
+
+
+
 #### Embeddings
+
+**Latest**
+Embedder bge-m3, 1k vector size. Local and multiple services
+Local with llamacpp works well.
+
 
 Embedding options for search engines to be investigated. So far, built-in embedder from chromadb vs 
 [sentence-transformer](https://huggingface.co/sentence-transformers) with 
@@ -32,12 +48,21 @@ Embedding options for search engines to be investigated. So far, built-in embedd
 
 
 #### Indexing
+**Latest**
+No indexing for brute force vector search needed.
+
 
 Documents are indexed using embeddings. Make sure to store text content and useful metadata as well. Chunking (break large documents into pieces) recommended, chunk size effects to be investigated (currently 1000 words, 50 overlapp). 
 
 **Use same embedding for indexing and query**
 
 ### LLMs
+
+**Latest**
+Llama3.3-70B on deepinfra or huggingface for complex tasks, 128k token length
+
+Llama3.2-3B locally with ollama or llamacpp 
+
 
 Tested locally [Ollama](https://ollama.com/) with [llama3.2, 3B](https://ollama.com/library/llama3.2) 
 Works but very slow without GPU
@@ -46,6 +71,7 @@ Tested with OpenAI API. Works. *Inital testing, maybe 50 trial queries ~ 50k tok
 
 Would also like to test [*LLäMmlein*](https://arxiv.org/abs/2411.11171) from [Uni Würzburg](https://www.informatik.uni-wuerzburg.de/datascience/projects/nlp/llammlein/), available [here](https://huggingface.co/collections/LSX-UniWue/llammlein-6732ff41f3705c686e605762)
 
+Llammlein available on huggingface but too small for our tasks...
 
 ### Data Sources 
 
@@ -54,6 +80,12 @@ Would also like to test [*LLäMmlein*](https://arxiv.org/abs/2411.11171) from [U
  2. [Klimaschutzkonzeppt Karlsruhe](https://www.karlsruhe.de/umwelt-klima/klimaschutz-klimaanpassung/klimaschutzaktivitaeten/klimaschutzziele-der-stadt-karlsruhe) 
 
 #### Examples
+
+**Latest**
+*Sql Based Search*
+Documentation missing. Database [layout](./docs/uml_diagram.png). 
+Should be generic enough to fit different projects.
+
 
 *Using elasticsearch for Ratsinfomation*
 
