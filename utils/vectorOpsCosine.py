@@ -2,21 +2,23 @@ import argparse
 import os
 import json
 import numpy as np
-from ragInstrumentation import measure_execution_time
 from joblib import Parallel, delayed
 
 # embedder will complain on tokenizer parallelism
 # set TOKENIZERS_PARALLELISM to False before running
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-DIM = 384
-DEBUG = False
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../rag')))
+from ragInstrumentation import measure_execution_time
+
+DEBUG = True
 
 @measure_execution_time
 def load_vectors(filename):
-    """Load all vectors from a binary file of float32, shape: (N, DIM)."""
+    """Load all vectors from a binary file of float32, shape: (N, args.dim)."""
     file_size = os.path.getsize(filename)
-    bytes_per_record = DIM * 4  # float32 is 4 bytes
+    bytes_per_record = args.dim * 4  # float32 is 4 bytes
     if file_size % bytes_per_record != 0:
         raise ValueError("File size not divisible by record size. Invalid file?")
 
@@ -29,8 +31,8 @@ def load_vectors(filename):
 
     # Convert to float32 array
     arr = np.frombuffer(raw, dtype=np.float32)
-    # Reshape to [N, DIM]
-    arr = arr.reshape(num_records, DIM)
+    # Reshape to [N, args.dim]
+    arr = arr.reshape(num_records, args.dim)
 
     # Normalize each vector to unit length.
     # Axis=1 means we take the norm across each row (each vector).
@@ -142,6 +144,7 @@ if __name__ == "__main__":
     parser.add_argument('-v', '--vectors', default="vectors.bin")      # option that takes a value
     parser.add_argument('-q', '--query')      # option that takes a value
     parser.add_argument('-i', '--items', type=int, default=5)      # option that takes a value
+    parser.add_argument('-d', '--dim', type=int, default=1024)      # option that takes a value
     args = parser.parse_args()
 
     if args.command == "search":
@@ -155,7 +158,7 @@ if __name__ == "__main__":
             parser.print_help()
             exit(1)
         query = json.loads(args.query)
-        query_vec = np.array(query, dtype=np.float32).reshape(1, DIM)
+        query_vec = np.array(query, dtype=np.float32).reshape(1, args.dim)
         result, dists = query_vectors(vectors,query_vec[0], args.items)
         print("NN indices:", result)
         print("NN distances:", dists)
@@ -177,7 +180,7 @@ if __name__ == "__main__":
             print("No local embedder available")
             embedder = rag.Embedder()
         query = embedder.encode(query_text)["data"][0]["embedding"]
-        query_vec = np.array(query, dtype=np.float32).reshape(1, DIM)
+        query_vec = np.array(query, dtype=np.float32).reshape(1, args.dim)
         result, dists = query_vectors(vectors,query_vec[0], args.items)
         print("NN indices:", result)
         print("NN distances:", dists)
