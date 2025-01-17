@@ -656,6 +656,9 @@ class VectorDb:
                     raise ValueError(f"Invalid collection:{locCollection}")
             else:
                 raise ValueError("Service error:",response.status_code)
+        elif provider == "pysearch":
+            self.url = cfg.pysearch["url"]
+            # support only 1 collection
         else:
             raise ValueError("Invalid provider")
         self.provider = provider
@@ -677,6 +680,13 @@ class VectorDb:
                 print(response.status_code)
                 return None
         elif self.provider == "localsearch":
+            self.url = cfg.localsearch["url"]
+            response = requests.get(self.url)
+            if response.status_code == 200:
+                return {"code": 0}
+            else:
+                raise ValueError("Service error:",response.status_code)
+        elif self.provider == "pysearch":
             self.url = cfg.localsearch["url"]
             response = requests.get(self.url)
             if response.status_code == 200:
@@ -847,6 +857,18 @@ class VectorDb:
                 print(response.status_code)
                 return None
         elif self.provider == "localsearch":
+            data = {
+                "collection": self.collection,
+                "vectors": vectors,
+                "limit": limit
+            }
+            response = requests.post(self.url, json=data)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                if DEBUG: print(response.status_code)
+                return None
+        elif self.provider == "pysearch":
             data = {
                 "collection": self.collection,
                 "vectors": vectors,

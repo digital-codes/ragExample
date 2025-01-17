@@ -117,26 +117,28 @@ def query_vectors(vectors, query, num_neighbors=5):
     return indices[:num_neighbors], distances[:num_neighbors]
 
 
-@app.route('/search', methods=['POST'])
+@app.route('/search', methods=["GET",'POST'])
 def handle_request():
     all_embeddings, dim = app.config['all_embeddings'], app.config['dim']
-    print(f"Received request with {len(all_embeddings)} embeddings of dimension {dim}.")
+    if request.method == 'GET':
+        return jsonify({"status": "Service is up and running"}), 200
+    if DEBUG: print(f"Received request with {len(all_embeddings)} embeddings of dimension {dim}.")
     try:
         # Parse JSON request
         req_data = request.get_json()
         
         # Extract parameters
-        vector_index = req_data.get('index', 0)
-        top_n = req_data.get('top_n', 5)
-        query_vector = req_data.get('vector')
+        vector_index = int(req_data.get('collection', 0))
+        top_n = req_data.get('limit', 5)
+        query_vector = req_data.get('vectors')
 
         # Validate vector_index
         if vector_index < 0 or vector_index >= len(all_embeddings):
-            return jsonify({"error": "Invalid 'vector_index'."}), 400
+            return jsonify({"error": "Invalid 'collection'."}), 400
 
         # Validate query vector
         if query_vector is None or not isinstance(query_vector, list):
-            return jsonify({"error": "'vector' key is required and must be a list."}), 400
+            return jsonify({"error": "'vectors' key is required and must be a list."}), 400
 
         query_vector = np.array(query_vector, dtype=np.float32)
         if query_vector.shape[0] != dim:
