@@ -659,6 +659,7 @@ class VectorDb:
         elif provider == "pysearch":
             self.url = cfg.pysearch["url"]
             # support only 1 collection
+            self.collection = 0
         else:
             raise ValueError("Invalid provider")
         self.provider = provider
@@ -687,7 +688,7 @@ class VectorDb:
             else:
                 raise ValueError("Service error:",response.status_code)
         elif self.provider == "pysearch":
-            self.url = cfg.localsearch["url"]
+            self.url = cfg.pysearch["url"]
             response = requests.get(self.url)
             if response.status_code == 200:
                 return {"code": 0}

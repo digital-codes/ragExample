@@ -141,19 +141,26 @@ def handle_request():
             return jsonify({"error": "'vectors' key is required and must be a list."}), 400
 
         query_vector = np.array(query_vector, dtype=np.float32)
+        if DEBUG: print(f"Query vector shape: {query_vector.shape}")
         if query_vector.shape[0] != dim:
             return jsonify({"error": f"Query vector size must match dimension {dim}."}), 400
 
         # Perform similarity search
+        if DEBUG: print(f"Performing similarity search on collection {vector_index}...")
         embedding_matrix = all_embeddings[vector_index]
         results = query_vectors(embedding_matrix, query_vector, top_n)
-
+        if DEBUG: print(f"Results: {results}")
         # Construct response
+        id = list(results[0])
+        sim = list(results[1])
+        data = []
+        for i in range(len(id)):
+            data.append({"id" : int(id[i]),"similarity" : float(sim[i])})
+        if DEBUG: print(f"Response: {data}")
         response = {
-            "results": [
-                {"index": idx, "similarity": similarity} for idx, similarity in results
-            ]
+            "data": data
         }
+        if DEBUG: print(f"Response: {response}")
         return jsonify(response), 200
 
     except Exception as e:

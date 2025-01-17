@@ -77,6 +77,18 @@ def initialize():
             "sq":sq,
             "db":sq.DatabaseUtility(connection_string)
         }
+    elif config["dbProvider"] == "pysearch":
+        config["dbSearch"] = {
+            "title": deployUtils.VectorDb(provider=config["dbProvider"],collection=f'{config["dbCollection"]}_title')
+        }
+        config["dbClient"] = config["dbSearch"]["title"]
+        import ragSqlUtils as sq
+        import private_remote as pr
+        connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
+        config["sql"] = {
+            "sq":sq,
+            "db":sq.DatabaseUtility(connection_string)
+        }
     else:
         config["dbClient"] = deployUtils.VectorDb(provider=config["dbProvider"],collection=config["dbCollection"])
     checkDb()
@@ -220,6 +232,45 @@ if __name__ == "__main__":
                 searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
                 if DEBUG: print(searchResult)
                 print("S",searchResult)
+                if len(searchResult) > 0:
+                    #indices = [f["id"] for f in searchResult["data"]]
+                    indices = [f["id"] for f in searchResult]
+                    if DEBUG: print("Indices:",indices)
+                    items = config["sql"]["db"].find_items(indices)
+                    if DEBUG: print(items)
+                    itemIds = [i[0] for i in items][:config["dbItems"]]
+                    # here files is also item names
+                    files = [i[1] for i in items][:config["dbItems"]]
+                    if DEBUG: print(itemIds)
+                    # search for title and fulltext in one go
+                    titles = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                        filters=[
+                            config["sql"]["sq"].Snippet.lang == config["lang"],
+                            config["sql"]["sq"].Snippet.itemId.in_(itemIds),
+                                config["sql"]["sq"].Snippet.type == "title",
+                                config["sql"]["sq"].Snippet.chunkId == None
+                        ]
+                    )
+                    if DEBUG: print([t.id for t in titles])
+                    fulltexts = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                        filters=[
+                            config["sql"]["sq"].Snippet.lang == config["lang"],
+                            config["sql"]["sq"].Snippet.itemId.in_(itemIds),
+                                config["sql"]["sq"].Snippet.type == "content",
+                                config["sql"]["sq"].Snippet.chunkId == None
+                        ]
+                    )
+                    if DEBUG: print([t.id for t in fulltexts])
+                    results = [(files[i], titles[i].content, fulltexts[i].content) for i in range(len(itemIds))]
+                else:
+                    results = []
+                    
+            elif config["dbProvider"] == "pysearch":
+                searchResult = config["dbSearch"]["title"].searchItem(searchVector, limit=config["dbItems"]*2)
+                searchResult = searchResult["data"] if searchResult != None else []
+                if DEBUG: print(searchResult)
+                # wrong. csearch returns chunk indices, tsearch returns title indices
+                if DEBUG: print(searchResult)
                 if len(searchResult) > 0:
                     #indices = [f["id"] for f in searchResult["data"]]
                     indices = [f["id"] for f in searchResult]
