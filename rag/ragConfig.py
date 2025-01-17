@@ -63,3 +63,8 @@ localllama = {
 localsearch = {
     "url":"http://localhost:9001/"
 }
+
+# local vector search server with py
+pysearch = {
+    "url":"http://localhost:9001/search"
+}
