@@ -10,7 +10,7 @@ from graphviz import Digraph
 
 import pandas as pd
 
-
+DEBUG = False
 
 # Create the Declarative Base
 Base = declarative_base()
@@ -101,8 +101,8 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(256), unique=True, nullable=False)
-    created = Column(DateTime, nullable=True, default=func.current_date())
-    modified = Column(DateTime, nullable=True)
+    created = Column(DateTime, nullable=True,  default=func.now())
+    modified = Column(DateTime, nullable=True, default=func.now(), onupdate=func.now())
     url = Column(String(1024), nullable=True)
     dataurl = Column(String(1024), nullable=True)
     imgurl = Column(String(1024), nullable=True)
@@ -173,6 +173,7 @@ def validate_language(mapper, connection, target):
     Validate that the language of the text is in the project's allowed languages using FIND_IN_SET.
     """
     # Use FIND_IN_SET to check if the language is allowed
+    # needs to be registered as a function for SQLite, see above
     query = text(f"""
         SELECT FIND_IN_SET('{target.lang}', langs) > 0
         FROM projects
@@ -180,6 +181,7 @@ def validate_language(mapper, connection, target):
     """
     )
     result = connection.execute(query).scalar()
+    if DEBUG: print(f"Snippet: language {target.lang} allowed: {result}")
 
     if not result:
         msg = f"Snippet: language {target.lang} not allowed"
@@ -194,9 +196,30 @@ class DatabaseUtility:
         and create all tables.
         """
         self.engine = create_engine(connection_string)
+        self.dialect = "sqlite" if self.engine.dialect.name == "sqlite" else "mysql"
         self.Session = sessionmaker(bind=self.engine, expire_on_commit=False) 
         # expire_on_commit=False to prevent session from expiring after !!!
         self._initialize_tables()
+        # Register custom FIND_IN_SET for SQLite. after init tables
+        if self.dialect == "sqlite":
+            self._register_find_in_set()
+
+    def _register_find_in_set(self):
+        """
+        Register a custom FIND_IN_SET function for SQLite.
+        """
+        def find_in_set(value, csv):
+            if not csv:
+                return 0
+            items = csv.split(",")
+            index = items.index(value) + 1 if value in items else 0
+            return index
+
+        # Use event to register the function on connection creation
+        @event.listens_for(self.engine, "connect")
+        def connect(dbapi_connection, connection_record):
+            if DEBUG: print("Registering FIND_IN_SET function")
+            dbapi_connection.create_function("FIND_IN_SET", 2, find_in_set)
 
     def _initialize_tables(self):
         """
@@ -533,6 +556,12 @@ class DatabaseUtility:
 
         """
         engine = create_engine(connection_string)
+        # if sqlite, just delete the file
+        if engine.dialect.name == "sqlite":
+            engine.dispose()
+            import os
+            os.remove(connection_string.replace("sqlite:///",""))
+            return
         # Reflect the database schema
         meta = MetaData()
         meta.reflect(bind=engine)
@@ -541,8 +570,9 @@ class DatabaseUtility:
         #with engine.connect() as conn:
         with engine.begin() as conn:
             try:
-                # Disable foreign key checks
-                conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
+                # Disable foreign key checks if not sqlite3
+                if engine.dialect.name != "sqlite":
+                    conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
 
                 # Delete all data from all tables
                 # and drop all tables
@@ -552,11 +582,10 @@ class DatabaseUtility:
                     conn.execute(text(f"DROP TABLE {table.name};"))
 
                 # Re-enable foreign key checks
-                conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
+                if engine.dialect.name != "sqlite":
+                    conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
             except Exception as e:
                         print(f"An error occurred: {e}")
-            finally:
-                conn.close()
 
         engine.dispose()
 
