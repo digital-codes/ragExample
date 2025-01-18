@@ -3,12 +3,10 @@ from sqlalchemy import ForeignKey, LargeBinary, DateTime, MetaData, CheckConstra
 from sqlalchemy import create_engine, text, func, select, event, distinct
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, Session, aliased
 from sqlalchemy.sql.expression import over, case
-
 from contextlib import contextmanager
-
 from graphviz import Digraph
-
 import pandas as pd
+import sys
 
 DEBUG = False
 
@@ -202,7 +200,10 @@ class DatabaseUtility:
         self._initialize_tables()
         # Register custom FIND_IN_SET for SQLite. after init tables
         if self.dialect == "sqlite":
-            self._register_find_in_set_py313()
+            if sys.version_info.minor <= 12:
+                self._register_find_in_set_py312()
+            else:
+                self._register_find_in_set_py313()
 
     def _register_find_in_set_py313(self):
         """
