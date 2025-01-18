@@ -264,8 +264,6 @@ class DatabaseUtility:
             session.add(obj)
             session.flush()
             #session.refresh(obj)  # Forcefully load all attributes from the database
-            if self.dialect == "sqlite":  # Explicit commit for SQLite
-                session.commit()
             return obj
 
     def search(self, model, filters=None, order_by=None):
@@ -334,8 +332,6 @@ class DatabaseUtility:
             obj = session.query(model).filter(model.id == obj_id).first()
             if obj:
                 session.delete(obj)
-                if self.dialect == "sqlite":  # Explicit commit for SQLite
-                    session.commit()
             else:
                 raise ValueError(f"{model.__name__} with ID {obj_id} not found.")
 
@@ -564,7 +560,10 @@ class DatabaseUtility:
         if engine.dialect.name == "sqlite":
             engine.dispose()
             import os
-            os.remove(connection_string.replace("sqlite:///",""))
+            try:
+                os.remove(connection_string.replace("sqlite:///",""))
+            except FileNotFoundError:
+                pass
             return
         # Reflect the database schema
         meta = MetaData()
