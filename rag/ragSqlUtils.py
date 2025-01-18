@@ -202,12 +202,34 @@ class DatabaseUtility:
         self._initialize_tables()
         # Register custom FIND_IN_SET for SQLite. after init tables
         if self.dialect == "sqlite":
-            self._register_find_in_set()
+            self._register_find_in_set_py313()
 
-    def _register_find_in_set(self):
+    def _register_find_in_set_py313(self):
+        """
+        Register a custom FIND_IN_SET function for SQLite directly.
+        """
+        if DEBUG:
+            print("Registering FIND_IN_SET function")
+
+        def find_in_set(value, csv):
+            if not csv:
+                return 0
+            items = csv.split(",")
+            return items.index(value) + 1 if value in items else 0
+
+        # Register the function on the connection pool
+        with self.engine.connect() as conn:
+            raw_connection = conn.connection
+            raw_connection.create_function("FIND_IN_SET", 2, find_in_set)
+
+        if DEBUG:
+            print("FIND_IN_SET function registered successfully")
+
+    def _register_find_in_set_py312(self):
         """
         Register a custom FIND_IN_SET function for SQLite.
         """
+        if DEBUG: print("Registering FIND_IN_SET function")
         def find_in_set(value, csv):
             if not csv:
                 return 0
@@ -218,7 +240,7 @@ class DatabaseUtility:
         # Use event to register the function on connection creation
         @event.listens_for(self.engine, "connect")
         def connect(dbapi_connection, connection_record):
-            if DEBUG: print("Registering FIND_IN_SET function")
+            if DEBUG: print("EventListener for FIND_IN_SET function")
             dbapi_connection.create_function("FIND_IN_SET", 2, find_in_set)
 
     def _initialize_tables(self):

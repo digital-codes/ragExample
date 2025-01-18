@@ -2,7 +2,6 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../rag')))
 from ragInstrumentation import measure_execution_time
-
 import ragSqlUtils as sq
 import private_remote as pr
 
