@@ -27,7 +27,7 @@ print("Copied project:",prj[0].id)
 
 #verify
 prj = dst.search(sq.Project)
-print("Target:",prj[0])
+print("Target:",len(prj))
 
 
 # copy tags
