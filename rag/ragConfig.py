@@ -68,3 +68,12 @@ localsearch = {
 pysearch = {
     "url":"http://localhost:9001/search"
 }
+
+
+# local database
+database = {
+    # possible options
+    "options": ["sqlite", "mysql", "remote"],
+    # selected option
+    "selected": "sqlite"
+}
