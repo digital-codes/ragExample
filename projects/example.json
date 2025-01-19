@@ -1,0 +1,89 @@
+{
+    "name": "RagExample",
+    "description": "Description of the example",
+    "location": "./rgex",
+    "langs": "de",
+    "items": [
+        {
+            "name": "Unique name Item1",
+            "title": "Arbitrary Title1",
+            "tags": [
+                "List of arbitrary searchable tags",
+                "tag1",
+                "tag2",
+                "year_2025"
+            ],
+            "url": "http://example.com",
+            "dataurl": "http://example.com/data",
+            "imgurl": "http://example.com/img",
+            "meta": {
+                "description": "Description",
+                "institution": "Data institution"
+            },
+            "text": {
+                "de": {
+                    "options": [
+                        "file",
+                        "text"
+                    ],
+                    "selection": "text",
+                    "content": "bla bla bla"
+                }
+            }
+        },
+        {
+            "name": "Uniqie name Item2",
+            "title": "Arbitrary Title2",
+            "tags": [
+                "List of arbitrary searchable tags",
+                "tag3",
+                "tag2",
+                "year_2025"
+            ],
+            "url": "http://example.com",
+            "dataurl": "http://example.com/data",
+            "imgurl": "http://example.com/img",
+            "meta": {
+                "description": "Description2",
+                "institution": "Other data institution"
+            },
+            "text": {
+                "de": {
+                    "options": [
+                        "file",
+                        "text"
+                    ],
+                    "selection": "file",
+                    "content": "./rgex/item2.txt"
+                }
+            }
+        },
+        {
+            "name": "Unique name Item3",
+            "title": "Arbitrary Title3",
+            "tags": [
+                "List of arbitrary searchable tags",
+                "tag5",
+                "tag2",
+                "year_2025"
+            ],
+            "url": "http://example.com",
+            "dataurl": "http://example.com/data",
+            "imgurl": "http://example.com/img",
+            "meta": {
+                "description": "Description3",
+                "institution": "Data institution3"
+            },
+            "text": {
+                "de": {
+                    "options": [
+                        "file",
+                        "text"
+                    ],
+                    "selection": "text",
+                    "content": "Um die genannten Herausforderungen zu überwinden, beschäftigen sich neue Ansätze mit der Kombination von LLMs mit aktuellen, proprietären und domänenspezifischen Daten. In Bezug auf Geschäftsprozesse können das etwa Dokumente, Handbücher, Webseiteninhalte oder andere Informationsquellen sein. Ein Architekturkonzept, dass die Integration der eigenen Daten in GenKI-Lösungen erlaubt, ist RAG. RAG ermöglicht dies durch das Abrufen von relevanten Informationen aus zusätzlichen Datenquellen, die anschließend dem LLM zur Verfügung gestellt werden.  Auf diese Weise optimiert RAG die Ausgabe, ohne das LLM neu trainieren zu müssen. RAG ist ein kostengünstiger Ansatz und macht LLMs im geschäftlichen Umfeld nutzbarer. Die von RAG genutzten Daten können aus APIs, Datenbanken oder Dokumenten stammen. Dabei muss jedoch darauf geachtet werden, dass der Datenschutz beachtet wird und keine personenbezogenen Daten oder geistiges Eigentum mit einbezogen werden."
+                }
+            }
+        }
+    ]
+}

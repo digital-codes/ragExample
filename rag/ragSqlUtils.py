@@ -82,18 +82,15 @@ class Item(Base):
 
     Attributes:
         id (int): The primary key of the item.
-        name (str): The unique name of the item.
-        summary_<lang> (str, optional): A brief summary of the item.
-        text_<lang> (str, optional): The full text description of the item.
-        title_<lang> (str): The title of the item.
-        created (datetime, optional): The creation date of the item. Defaults to the current date.
-        modified (datetime, optional): The last modified date of the item.
-        url (str, optional): The URL associated with the item.
-        license (str, optional): The license information of the item.
-        itemIdx (int): The index of the item.
-
-    Relationships:
-        project (Project): The project to which the item belongs.
+        name (str): The name of the item. Must be unique and cannot be null.
+        created (datetime): The timestamp when the item was created. Defaults to the current time.
+        modified (datetime): The timestamp when the item was last modified. Defaults to the current time and updates on modification.
+        url (str): The URL associated with the item. Can be null.
+        dataurl (str): The data URL associated with the item. Can be null.
+        imgurl (str): The image URL associated with the item. Can be null.
+        license (str): The license information for the item. Can be null.
+        itemIdx (int): An index associated with the item. Cannot be null.
+        tags (list of Tag): The tags associated with the item, defined through a many-to-many relationship.
     """
     __tablename__ = 'items'
 
@@ -141,7 +138,7 @@ class Snippet(Base):
         itemId (int): Foreign key referencing the associated item. Nullabe with on delete cascade
         chunkId (int): Foreign key referencing the associated chunk. Nullable with on delete cascade
         lang (str): The language of the text.
-        type (str): Type of the text. Can be 'title', 'summary', 'fact' or 'text'.
+        type (str): Type of the text. Can be 'title', 'summary', 'fact' or 'text'. Metadata is fact
         content (str): The text content of the chunk. Must be in project.langs
         item (Item): Relationship to the Item model, back_populated by 'chunks'.
         chunk (Chunk): Relationship to the Item model, back_populated by 'chunks'.
