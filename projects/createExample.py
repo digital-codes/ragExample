@@ -1,4 +1,45 @@
 import os
+"""
+This script creates an example project using the provided configuration file (example.json).
+It performs the following tasks:
+1. Reads the configuration file.
+2. Initializes necessary utilities and modules.
+3. Creates a project directory and database.
+4. Inserts project details into the database.
+5. Processes items and their associated tags, snippets, and chunks.
+6. Generates vectors for titles, chunks, and summaries.
+Modules:
+- os: Provides a way of using operating system dependent functionality.
+- sys: Provides access to some variables used or maintained by the interpreter.
+- json: Provides methods to work with JSON data.
+- numpy: Provides support for large, multi-dimensional arrays and matrices.
+- ragSqlUtils: Custom module for database utilities.
+- ragDeployUtils: Custom module for deployment utilities.
+- ragTextUtils: Custom module for text processing utilities.
+Configuration:
+- exampleConfigFile: Path to the configuration file (example.json).
+Classes and Functions:
+- PreProcessor: Class for text preprocessing.
+- Embedder: Class for embedding text using a specified provider.
+- DatabaseUtility: Class for database operations.
+- Project: Class representing a project.
+- Tag: Class representing a tag.
+- Item: Class representing an item.
+- Snippet: Class representing a snippet of text.
+- Chunk: Class representing a chunk of text.
+Workflow:
+1. Read the configuration file.
+2. Initialize the text preprocessor and embedder.
+3. Create the project directory if it doesn't exist.
+4. Delete any existing database file and create a new one.
+5. Insert project details into the database.
+6. Process each item in the configuration:
+    - Create and insert tags.
+    - Create and insert items.
+    - Create and insert snippets (title, facts, summary, content).
+    - Create and insert chunks of text.
+7. Generate vectors for titles, chunks, and summaries.
+"""
 import sys
 import json
 import numpy as np
