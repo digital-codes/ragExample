@@ -65,7 +65,7 @@ print("Creating example project:", exampleConfig["name"])
 preprocessor = rt.PreProcessor()
 
 # get embedder. use different provider if desired
-embedder = rag.Embedder(provider="deepinfra")
+embedder = rag.Embedder(provider="localllama") # deepinfra")
 
 # create project dir
 if not os.path.exists(exampleConfig["location"]):
