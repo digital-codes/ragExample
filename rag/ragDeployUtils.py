@@ -69,10 +69,13 @@ class Embedder:
         elif provider == "local":
             try:
                 from sentence_transformers import SentenceTransformer
-                self.model = 'sentence-transformers/all-MiniLM-L12-v2'
+                #self.model = 'sentence-transformers/all-MiniLM-L12-v2'
+                #self.size = 384
+                #self.toks = 512
+                self.model = 'BAAI/bge-m3'
+                self.size = 1024
+                self.toks = 8192
                 self.engine = SentenceTransformer(self.model, device='cpu')
-                self.size = 384
-                self.toks = 512
                 self. url = None
                 # embeddings = model.encode(sentences)  # Returns a NumPy array
             except ModuleNotFoundError:
