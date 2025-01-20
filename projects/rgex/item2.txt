@@ -1,0 +1,27 @@
+Was ist Retrieval-Augmented Generation?
+
+Bei Retrieval-Augmented Generation (RAG) wird die Ausgabe eines großen Sprachmodells optimiert, sodass es auf eine maßgebliche Wissensbasis außerhalb seiner Trainingsdatenquellen verweist, bevor eine Antwort generiert wird. Große Sprachmodelle (LLMs) werden mit riesigen Datenmengen trainiert und verwenden Milliarden von Parametern, um Originalausgaben für Aufgaben wie das Beantworten von Fragen, das Übersetzen von Sprachen und das Vervollständigen von Sätzen zu generieren. RAG erweitert die bereits leistungsstarken Funktionen von LLMs auf bestimmte Domains oder die interne Wissensbasis einer Organisation, ohne dass das Modell neu trainiert werden muss. Es ist ein kostengünstiger Ansatz zur Verbesserung der LLM-Ergebnisse, sodass er in verschiedenen Kontexten relevant, genau und nützlich bleibt.
+Warum ist Retrieval-Augmented Generation wichtig?
+
+LLMs sind eine wichtige Technologie für künstliche Intelligenz (KI), die intelligente Chatbots und andere Anwendungen für natürliche Sprachverarbeitung (NLP) unterstützt. Ziel ist es, Bots zu entwickeln, die Benutzerfragen in verschiedenen Kontexten beantworten können, indem sie auf autoritative Wissensquellen verweisen. Leider führt die Natur der LLM-Technologie zu einer Unvorhersehbarkeit der LLM-Antworten. Darüber hinaus sind die LLM-Trainingsdaten statisch und führen einen Stichtag für das vorhandene Wissen ein.
+
+Zu den bekannten Herausforderungen von LLMs gehören:
+
+    Falsche Informationen präsentieren, wenn keine Antwort vorliegt.
+    Präsentation veralteter oder allgemeiner Informationen, wenn der Benutzer eine bestimmte, aktuelle Antwort erwartet.
+    Eine Antwort aus nicht autoritativen Quellen erstellen.
+    Es entstehen ungenaue Antworten aufgrund einer verwirrenden Terminologie, bei der verschiedene Trainingsquellen dieselbe Terminologie verwenden, um über verschiedene Dinge zu sprechen.
+
+Sie können sich das große Sprachmodell als einen übermäßig begeisterten neuen Mitarbeiter vorstellen, der sich weigert, über aktuelle Ereignisse auf dem Laufenden zu bleiben, aber jede Frage immer mit absoluter Zuversicht beantwortet. Leider kann sich eine solche Einstellung negativ auf das Vertrauen der Nutzer auswirken und Sie möchten nicht, dass Ihre Chatbots nachahmen!
+
+RAG ist ein Ansatz zur Lösung einiger dieser Herausforderungen. Es leitet das LLM weiter, um relevante Informationen aus maßgeblichen, vorab festgelegten Wissensquellen abzurufen. Unternehmen haben eine bessere Kontrolle über die generierte Textausgabe, und die Benutzer erhalten Einblicke in die Art und Weise, wie das LLM die Antwort generiert.
+Was sind die Vorteile von Retrieval-Augmented Generation?
+
+Die RAG-Technologie bietet mehrere Vorteile für die generativen KI-Bemühungen eines Unternehmens.
+Kostengünstige Implementierung
+
+Die Chatbot-Entwicklung beginnt in der Regel mit einem Basismodell. Basismodelle (FMs) sind API-zugängliche LLMs, die auf einem breiten Spektrum generalisierter und unbeschrifteter Daten trainiert wurden. Die Rechen- und Finanzkosten für die Umschulung von FMs für organisations- oder domainspezifische Informationen sind hoch. RAG ist ein kostengünstigerer Ansatz für die Einführung neuer Daten in das LLM. Es macht die Technologie der generativen künstlichen Intelligenz (generative KI) breiter zugänglich und nutzbar.
+Aktuelle Informationen
+
+Auch wenn die ursprünglichen Trainingsdatenquellen für ein LLM für Ihre Bedürfnisse geeignet sind, ist es schwierig, die Relevanz aufrechtzuerhalten. RAG ermöglicht es Entwicklern, die neuesten Forschungsergebnisse, Statistiken oder Neuigkeiten zu den generativen Modellen bereitzustellen. Sie können RAG verwenden, um das LLM direkt mit Live-Feeds in sozialen Medien, Nachrichtenseiten oder anderen häufig aktualisierten Informationsquellen zu verbinden. Das LLM kann den Benutzern dann die neuesten Informationen zur Verfügung stellen.
+Verbessertes Benutzervertrauen

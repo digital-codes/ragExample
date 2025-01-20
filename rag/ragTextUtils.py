@@ -6,6 +6,10 @@ from ragInstrumentation import measure_execution_time
 
 DEBUG = False
 
+# download the punkt tokenizer
+if not os.path.exists(nltk.data.find('tokenizers/punkt')):
+    nltk.download('punkt', quiet=True)
+
 class PreProcessor():
     def __init__(self,lang="de"):
         nltk.download('punkt_tab')

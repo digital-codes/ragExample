@@ -1,5 +1,5 @@
 {
-    "name": "RagExample",
+    "name": "ragExample",
     "description": "Description of the example",
     "location": "./rgex",
     "langs": "de",
@@ -16,9 +16,16 @@
             "url": "http://example.com",
             "dataurl": "http://example.com/data",
             "imgurl": "http://example.com/img",
-            "meta": {
-                "description": "Description",
-                "institution": "Data institution"
+            "facts": {
+                "cost": "Value1",
+                "funding": "Value2",
+                "dates": "Value3",
+                "hr": "Value4",
+                "impact": "Value5",
+                "meta": {
+                    "description": "Description",
+                    "institution": "Data institution"
+                }
             },
             "text": {
                 "de": {
@@ -27,7 +34,8 @@
                         "text"
                     ],
                     "selection": "text",
-                    "content": "bla bla bla"
+                    "content": "bla bla bla",
+                    "summary": "bla"
                 }
             }
         },
@@ -43,9 +51,14 @@
             "url": "http://example.com",
             "dataurl": "http://example.com/data",
             "imgurl": "http://example.com/img",
-            "meta": {
-                "description": "Description2",
-                "institution": "Other data institution"
+            "facts": {
+                "cost": "Value1",
+                "funding": "Value2",
+                "dates": "Value3",
+                "impact": "Value5",
+                "meta": {
+                    "description": "Description"
+                }
             },
             "text": {
                 "de": {
@@ -54,7 +67,9 @@
                         "text"
                     ],
                     "selection": "file",
-                    "content": "./rgex/item2.txt"
+                    "content": "./rgex/item2.txt",
+                    "summary": "optional short summary of the content"
+
                 }
             }
         },
@@ -70,9 +85,12 @@
             "url": "http://example.com",
             "dataurl": "http://example.com/data",
             "imgurl": "http://example.com/img",
-            "meta": {
-                "description": "Description3",
-                "institution": "Data institution3"
+            "facts": {
+                "cost": "Value1",
+                "hr": "Value4",
+                "meta": {
+                    "institution": "Data institution"
+                }
             },
             "text": {
                 "de": {

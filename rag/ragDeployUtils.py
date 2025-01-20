@@ -41,28 +41,38 @@ class Embedder:
             self.api_key = pr.deepInfra["apiKey"]
             self.model = cfg.deepInfra["embMdl"]
             self.url = cfg.deepInfra["embUrl"]
+            self.size = cfg.deepInfra["embSize"]
+            self.toks = cfg.deepInfra["embToks"]
             self.engine = None
         elif provider == "huggingface":
             self.api_key = pr.huggingface["apiKey"]
             self.model = cfg.huggingface["embMdl"]
             self.url = cfg.huggingface["embUrl"]
+            self.size = cfg.huggingface["embSize"]
+            self.toks = cfg.huggingface["embToks"]
             self.engine = None
             print("Warning: Huggingface embeddings are non-standard.")
         elif provider == "openai":
             self.api_key = pr.openAi["apiKey"]
             self.model = cfg.openAi["embMdl"]
             self.url = cfg.openAi["embUrl"]
+            self.size = cfg.openAi["embSize"]
+            self.toks = cfg.openAi["embToks"]
             self.engine = None
             print("Warning: OpenAI embeddings are non-standard.")
         elif provider == "localllama":
             self.api_key = pr.localllama["apiKey"]
             self.model = cfg.localllama["embMdl"]
             self.url = cfg.localllama["embUrl"]
+            self.size = cfg.localllama["embSize"]
+            self.toks = cfg.localllama["embToks"]
         elif provider == "local":
             try:
                 from sentence_transformers import SentenceTransformer
                 self.model = 'sentence-transformers/all-MiniLM-L12-v2'
                 self.engine = SentenceTransformer(self.model, device='cpu')
+                self.size = 384
+                self.toks = 512
                 self. url = None
                 # embeddings = model.encode(sentences)  # Returns a NumPy array
             except ModuleNotFoundError:
@@ -77,6 +87,7 @@ class Embedder:
         Returns:
             int: The size of the embedding vectors.
         """
+        return self.size
         if "all-minilm-l12" in self.model.lower():
             return 384
         elif "jina-embeddings-v2-base" in self.model.lower():
