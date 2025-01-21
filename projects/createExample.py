@@ -156,6 +156,17 @@ for i in exampleConfig["items"]:
         )
         db.insert(fact)
 
+    # optional meta, create empty object if missing
+    meta = i.get("meta", {})
+    metaSnip = sq.Snippet(
+        content=json.dumps(meta),
+        lang=lang,
+        itemId=item.id,
+        refIdx=item.itemIdx,
+        type="meta",
+    )
+    db.insert(metaSnip)
+
     # optional summary. create "" entry if missing
     summary = i.get("text").get(lang).get("summary", "")
     sum = sq.Snippet(

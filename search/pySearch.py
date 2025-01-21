@@ -11,7 +11,7 @@ from ragInstrumentation import measure_execution_time
 DEBUG = False
 
 @measure_execution_time
-def load_vectors(filename):
+def load_vectors(filename,dim):
     """
     Load and normalize vectors from a binary file.
     Args:
@@ -25,7 +25,7 @@ def load_vectors(filename):
         - Each vector is normalized to unit length.
     """
     file_size = os.path.getsize(filename)
-    bytes_per_record = args.dim * 4  # float32 is 4 bytes
+    bytes_per_record = dim * 4  # float32 is 4 bytes
     if file_size % bytes_per_record != 0:
         raise ValueError("File size not divisible by record size. Invalid file?")
 
@@ -39,7 +39,7 @@ def load_vectors(filename):
     # Convert to float32 array
     arr = np.frombuffer(raw, dtype=np.float32)
     # Reshape to [N, args.dim]
-    arr = arr.reshape(num_records, args.dim)
+    arr = arr.reshape(num_records, dim)
 
     # Normalize each vector to unit length.
     # Axis=1 means we take the norm across each row (each vector).
@@ -110,8 +110,10 @@ def query_vectors(vectors, query, num_neighbors=5):
 
     distances, indices = parallel_compute_similarities(query_normalized, vectors, n_jobs=-1)
     
-    return indices[:num_neighbors], distances[:num_neighbors]
-
+    if num_neighbors > 0:
+        return indices[:num_neighbors], distances[:num_neighbors]
+    else:
+        return indices, distances
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -125,7 +127,7 @@ if __name__ == "__main__":
         print(f"Source file {args.vectors} not found.")
         parser.print_help()
         exit(1)
-    vectors = load_vectors(args.vectors)
+    vectors = load_vectors(args.vectors,args.dim)
     if args.query == None:
         print(f"No query.")
         parser.print_help()

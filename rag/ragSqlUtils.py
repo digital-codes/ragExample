@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from graphviz import Digraph
 import pandas as pd
 import sys
+import json
 
 DEBUG = False
 
@@ -23,12 +24,19 @@ class Project(Base):
         name (str): The name of the project. Cannot be null. Unique
         description (str): A textual description of the project. Can be null.
         langs (str): List of the languages of the project. Defaults to 'de,en'.
+        snipTypes (str): List of snippet types associated with the project. Defaults to 'title,summary,content,fact,meta'.
+        factTypes (str): List of fact types associated with the project. Defaults to 'cost,impact,dates,hr,funding'.
         embedModel (str): The name of the embedder model. Cannot be null.
         embedSize (int: The size of the embedder model. Cannot be null. 
         vectorName (str): The name of the vector associated with the project. Cannot be null.
         vectorPath (str): The file path to the vector associated with the project. Cannot be null.
         indexName (str): The name of the index associated with the project. Can be null, then brute-force comparisons of vectors.
         indexPath (str): The file path to the index associated with the project. Can be null.
+        
+        on insertion of snippets, check that the language is in the project langs
+        and that the type is in the project snipTypes
+        and if fact, that the type is in the project factTypes
+        don't do this in sql, as only needing during project creation
     """
     __tablename__ = 'projects'
 
@@ -36,8 +44,10 @@ class Project(Base):
     name = Column(String(256), unique=True, nullable=False)
     description = Column(Text, nullable=True)
     langs = Column(String(256), nullable=False, default="de,en")
-    embedModel = Column(String(256), nullable=False, default="all-minilm-l12-v2")
-    embedSize = Column(Integer, nullable=False,default = 384)
+    snipTypes = Column(String(1024), nullable=False, default="title,summary,content,fact,meta")
+    factTypes = Column(String(1024), nullable=False, default="cost,impact,dates,hr,funding") 
+    embedModel = Column(String(256), nullable=False, default="bge-m3")
+    embedSize = Column(Integer, nullable=False,default = 1024)
     vectorName = Column(String(256), nullable=False)
     vectorPath = Column(String(1024), nullable=False)
     indexName = Column(String(256), nullable=True)
@@ -155,32 +165,9 @@ class Snippet(Base):
     item = relationship("Item", back_populates="snippets")
     chunk = relationship("Chunk", back_populates="snippets")
 
-    __table_args__ = (
-        CheckConstraint("type IN ('content', 'title', 'summary','fact')", name='check_type_in_list'),
-    )
     
 Item.snippets = relationship("Snippet", order_by=Snippet.id, back_populates="item", cascade="all, delete-orphan")
 Chunk.snippets = relationship("Snippet", order_by=Snippet.id, back_populates="chunk", cascade="all, delete-orphan")
-
-@event.listens_for(Snippet, "before_insert")
-def validate_language(mapper, connection, target):
-    """
-    Validate that the language of the text is in the project's allowed languages using FIND_IN_SET.
-    """
-    # Use FIND_IN_SET to check if the language is allowed
-    # needs to be registered as a function for SQLite, see above
-    query = text(f"""
-        SELECT FIND_IN_SET('{target.lang}', langs) > 0
-        FROM projects
-        WHERE id = 1
-    """
-    )
-    result = connection.execute(query).scalar()
-    if DEBUG: print(f"Snippet: language {target.lang} allowed: {result}")
-
-    if not result:
-        msg = f"Snippet: language {target.lang} not allowed"
-        raise ValueError(msg)
 
 
 # Database Utility Class
@@ -195,51 +182,6 @@ class DatabaseUtility:
         self.Session = sessionmaker(bind=self.engine, expire_on_commit=False) 
         # expire_on_commit=False to prevent session from expiring after !!!
         self._initialize_tables()
-        # Register custom FIND_IN_SET for SQLite. after init tables
-        if self.dialect == "sqlite":
-            if sys.version_info.minor <= 12:
-                self._register_find_in_set_py312()
-            else:
-                self._register_find_in_set_py313()
-
-    def _register_find_in_set_py313(self):
-        """
-        Register a custom FIND_IN_SET function for SQLite directly.
-        """
-        if DEBUG:
-            print("Registering FIND_IN_SET function")
-
-        def find_in_set(value, csv):
-            if not csv:
-                return 0
-            items = csv.split(",")
-            return items.index(value) + 1 if value in items else 0
-
-        # Register the function on the connection pool
-        with self.engine.connect() as conn:
-            raw_connection = conn.connection
-            raw_connection.create_function("FIND_IN_SET", 2, find_in_set)
-
-        if DEBUG:
-            print("FIND_IN_SET function registered successfully")
-
-    def _register_find_in_set_py312(self):
-        """
-        Register a custom FIND_IN_SET function for SQLite.
-        """
-        if DEBUG: print("Registering FIND_IN_SET function")
-        def find_in_set(value, csv):
-            if not csv:
-                return 0
-            items = csv.split(",")
-            index = items.index(value) + 1 if value in items else 0
-            return index
-
-        # Use event to register the function on connection creation
-        @event.listens_for(self.engine, "connect")
-        def connect(dbapi_connection, connection_record):
-            if DEBUG: print("EventListener for FIND_IN_SET function")
-            dbapi_connection.create_function("FIND_IN_SET", 2, find_in_set)
 
     def _initialize_tables(self):
         """
@@ -278,9 +220,38 @@ class DatabaseUtility:
 
     def insert(self, obj):
         """
-        Insert a single object into the database.
+            This method performs several checks before inserting the object:
+            - If the object is an instance of `Snippet`, it verifies that:
+                - The language of the snippet is included in the project's languages.
+                - The type of the snippet is included in the project's snippet types.
+                - If the type is 'fact', it checks that the fact type is included in the project's fact types.
+
+            Args:
+                obj: The object to be inserted into the database. Typically, this would be an instance of a model class.
+
+            Raises:
+                ValueError: If the object's language, type, or fact type (for 'fact' snippets) are not valid according to the project's configuration.
+
+            Returns:
+                The inserted object with any database-generated attributes populated.
         """
         with self.get_session() as session:
+            # Perform checks before adding the snippet
+            if isinstance(obj, Snippet):
+                # Check if the language is in the project's langs
+                project = session.query(Project).first()
+                if obj.lang not in project.langs.split(','):
+                    raise ValueError(f"Language '{obj.lang}' is not in the project's languages: {project.langs}")
+
+                # Check if the type is in the project's snipTypes
+                if obj.type not in project.snipTypes.split(','):
+                    raise ValueError(f"Snippet type '{obj.type}' is not in the project's snippet types: {project.snipTypes}")
+
+                # If the type is 'fact', check if it is in the project's factTypes
+                if obj.type == 'fact':
+                    factType = list(json.loads(obj.content).keys())[0]
+                    if factType not in project.factTypes.split(','):
+                        raise ValueError(f"Fact type '{obj.content}' is not in the project's fact types: {project.factTypes}")
             session.add(obj)
             session.flush()
             #session.refresh(obj)  # Forcefully load all attributes from the database
@@ -300,10 +271,13 @@ class DatabaseUtility:
 
     def update(self, model, updated_obj):
         """
-        Update an object in the database using the provided object.
+            This method updates an existing object in the database with the values from the provided updated object.
+            It performs necessary checks and validations before updating the object.
 
-        :param model: SQLAlchemy model class (e.g., Item, Chunk)
-        :param updated_obj: SQLAlchemy model instance with updated values. Must have a valid ID.
+            :param model: SQLAlchemy model class (e.g., Item, Chunk). The class of the object to be updated.
+            
+            :raises ValueError: If the object with the given ID is not found.
+            :raises ValueError: If the updated Snippet object has a language, type, or fact type not allowed by the project.
         """
         with self.get_session() as session:
             # Query the existing object
@@ -312,6 +286,20 @@ class DatabaseUtility:
                 raise ValueError(f"{model.__name__} with ID {updated_obj.id} not found.")
 
         # Update fields
+            if isinstance(updated_obj, Snippet):
+                # Perform checks before updating the snippet
+                project = session.query(Project).first()
+                if updated_obj.lang not in project.langs.split(','):
+                    raise ValueError(f"Language '{updated_obj.lang}' is not in the project's languages: {project.langs}")
+
+                if updated_obj.type not in project.snipTypes.split(','):
+                    raise ValueError(f"Snippet type '{updated_obj.type}' is not in the project's snippet types: {project.snipTypes}")
+
+                if updated_obj.type == 'fact':
+                    factType = list(json.loads(updated_obj.content).keys())[0]
+                    if factType not in project.factTypes.split(','):
+                        raise ValueError(f"Fact type '{updated_obj.content}' is not in the project's fact types: {project.factTypes}")
+
             for key, value in updated_obj.__dict__.items():
                 if not key.startswith("_"):  # Skip SQLAlchemy internals
                     setattr(existing_obj, key, value)

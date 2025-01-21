@@ -16,16 +16,16 @@
             "url": "http://example.com",
             "dataurl": "http://example.com/data",
             "imgurl": "http://example.com/img",
+            "meta": {
+                "description": "Description",
+                "institution": "Data institution"
+            },
             "facts": {
                 "cost": "Value1",
                 "funding": "Value2",
                 "dates": "Value3",
                 "hr": "Value4",
-                "impact": "Value5",
-                "meta": {
-                    "description": "Description",
-                    "institution": "Data institution"
-                }
+                "impact": "Value5"
             },
             "text": {
                 "de": {
@@ -51,14 +51,14 @@
             "url": "http://example.com",
             "dataurl": "http://example.com/data",
             "imgurl": "http://example.com/img",
+            "meta": {
+                "description": "Description"
+            },
             "facts": {
                 "cost": "Value1",
                 "funding": "Value2",
                 "dates": "Value3",
-                "impact": "Value5",
-                "meta": {
-                    "description": "Description"
-                }
+                "impact": "Value5"
             },
             "text": {
                 "de": {
@@ -85,12 +85,12 @@
             "url": "http://example.com",
             "dataurl": "http://example.com/data",
             "imgurl": "http://example.com/img",
+            "meta": {
+                "institution": "Data institution"
+            },
             "facts": {
                 "cost": "Value1",
-                "hr": "Value4",
-                "meta": {
-                    "institution": "Data institution"
-                }
+                "hr": "Value4"
             },
             "text": {
                 "de": {
