@@ -143,10 +143,10 @@ class PreProcessor():
         """
         if DEBUG: print(f"Chunking text: {text}")
         ctext , wc, sents = self.clean(text)
-        if wc <= size:
-            return [ctext]
-        elif len(sents) == 1: # nonsense!
+        if wc == None or len(sents) == 1: # nonsense!
             return [""]
+        elif wc <= size:
+            return [ctext]
         else:
             print(f"Chunking {wc} words, {len(sents)} sentences into chunks of {size}")
             chunks = []
