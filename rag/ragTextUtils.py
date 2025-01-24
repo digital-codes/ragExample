@@ -145,11 +145,16 @@ class PreProcessor():
         ctext , wc, sents = self.clean(text)
         if wc <= size:
             return [ctext]
+        elif len(sents) == 1: # nonsense!
+            return [""]
         else:
+            print(f"Chunking {wc} words, {len(sents)} sentences into chunks of {size}")
             chunks = []
             idx = 0
             chunk = ""
+            idx1 = 0
             while idx < len(sents):
+                print(f"idx: {idx}")
                 if DEBUG: print(f"idx: {idx}, chunk: {chunk}")
                 chunk = f"{chunk}.{sents[idx]}".strip()
                 if len(chunk.split()) >= size:
@@ -158,9 +163,14 @@ class PreProcessor():
                         chunk = chunk[1:]
                     chunks.append(chunk)
                     chunk =  ""
+                    idx1 += 1
+                    print(f"idx1: {idx1}, {len(chunks)}")
+                    if idx1 > 10:
+                        break
                     # no idx incremtent here. overlapping chunks
                 else:
                     idx += 1
+                    idx1 = 0
             return chunks
 
 
