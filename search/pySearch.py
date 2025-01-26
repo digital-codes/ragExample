@@ -28,6 +28,7 @@ def load_vectors(filename,dim):
     bytes_per_record = dim * 4  # float32 is 4 bytes
     if file_size % bytes_per_record != 0:
         raise ValueError("File size not divisible by record size. Invalid file?")
+        return None
 
     num_records = file_size // bytes_per_record
     print(f"Number of vectors: {num_records}")

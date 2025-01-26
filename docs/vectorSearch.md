@@ -1,3 +1,23 @@
+# Text embeddings
+
+Texts are converted into multidimensional vector. conversion tries to consider semantic relation of words. 
+Result vectors are compared, typically using cosine similarity.
+
+example with bge-m3, 1024 domenstion, multilanguage:
+
+curl https://api-inference.huggingface.co/models/BAAI/bge-m3  -X POST -d 
+'{"inputs": { "source_sentence": "könig", 
+    "sentences": [ "könig","königin","anführer","barbar","gummibär","biker","hirsch" ] }}'
+     -H 'Content-Type: application/json'     -H 'Authorization: Bearer hf_xxxxxxxxxxxxxxxxxxxxx'
+[1.0000001192092896,
+0.7975720167160034,
+0.5169146060943604,
+0.38844993710517883,
+0.387514591217041,
+0.45941075682640076,
+0.44154393672943115]
+
+
 
 
 # similarity search on text embeddings. useful to normalize vectors?
