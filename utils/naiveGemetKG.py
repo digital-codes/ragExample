@@ -3,6 +3,9 @@ import nltk
 import re
 import json
 
+import networkx as nx
+import plotly.graph_objects as go
+
 nltk.download('punkt')
 nltk.download('stopwords')
 
@@ -156,4 +159,115 @@ for i, (subj, pred, obj) in enumerate(all_relations, start=1):
 
 # Serialize the KG in Turtle format
 print(kg.serialize(format='xml')) #.decode('utf-8'))
+
+########### 
+
+# 1. Extract nodes, edges, and provenance from RDF graph
+def extract_kg_data(graph):
+    nodes = set()
+    edges = []
+    provenance = []
+
+    # Extract triples and provenance
+    for subj, pred, obj in graph.triples((None, None, None)):
+        # Add nodes
+        nodes.add(subj)
+        nodes.add(obj)
+
+        # Check if the triple has provenance
+        for prov_bnode in graph.subjects(predicate=rdflib.URIRef("http://example.org/ontology/relationSubject"), object=subj):
+            # Extract provenance details
+            pred_prov = list(graph.objects(prov_bnode, rdflib.URIRef("http://example.org/ontology/relationPredicate")))[0]
+            obj_prov = list(graph.objects(prov_bnode, rdflib.URIRef("http://example.org/ontology/relationObject")))[0]
+            source = list(graph.objects(prov_bnode, rdflib.URIRef("http://purl.org/dc/terms/source")))[0]
+
+            # Add provenance information
+            if (subj, pred_prov, obj_prov) == (subj, pred, obj):
+                provenance.append((subj, pred, obj, source))
+
+        # Add edges
+        edges.append((subj, pred, obj))
+
+    return nodes, edges, provenance
+
+# Extract data from the RDF graph
+nodes, edges, provenance = extract_kg_data(kg)
+
+
+G = nx.DiGraph()
+G.add_edges_from([(str(s), str(o)) for s, p, o in edges])
+
+# Get positions using a spring layout in 3D
+pos = nx.spring_layout(G, dim=3, seed=42)
+node_x = [pos[node][0] for node in G.nodes]
+node_y = [pos[node][1] for node in G.nodes]
+node_z = [pos[node][2] for node in G.nodes]
+
+# 3. Build Plotly traces for visualization
+# Nodes
+node_trace = go.Scatter3d(
+    x=node_x,
+    y=node_y,
+    z=node_z,
+    mode="markers+text",
+    marker=dict(size=10, color="blue"),
+    text=list(G.nodes),
+    textposition="top center",
+)
+
+# Edges
+edge_x = []
+edge_y = []
+edge_z = []
+for edge in G.edges:
+    x0, y0, z0 = pos[edge[0]]
+    x1, y1, z1 = pos[edge[1]]
+    edge_x += [x0, x1, None]
+    edge_y += [y0, y1, None]
+    edge_z += [z0, z1, None]
+
+edge_trace = go.Scatter3d(
+    x=edge_x,
+    y=edge_y,
+    z=edge_z,
+    mode="lines",
+    line=dict(color="black", width=2),
+    hoverinfo="none",
+)
+
+# Provenance annotations
+provenance_annotations = []
+for subj, pred, obj, source in provenance:
+    # Midpoint for edge label
+    x0, y0, z0 = pos[str(subj)]
+    x1, y1, z1 = pos[str(obj)]
+    mid_x = (x0 + x1) / 2
+    mid_y = (y0 + y1) / 2
+    mid_z = (z0 + z1) / 2
+
+    # Create provenance annotation
+    provenance_annotations.append(
+        go.Scatter3d(
+            x=[mid_x],
+            y=[mid_y],
+            z=[mid_z],
+            mode="text",
+            text=[f"{str(pred)} ({str(source)})"],
+            textposition="middle center",
+        )
+    )
+
+# 4. Create and show the figure
+fig = go.Figure(data=[edge_trace, node_trace] + provenance_annotations)
+fig.update_layout(
+    title="3D Knowledge Graph Visualization with Provenance",
+    showlegend=False,
+    scene=dict(
+        xaxis=dict(showbackground=False),
+        yaxis=dict(showbackground=False),
+        zaxis=dict(showbackground=False),
+    ),
+)
+
+fig.show()
 
