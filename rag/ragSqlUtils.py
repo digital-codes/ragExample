@@ -617,7 +617,7 @@ class DatabaseUtility:
             relationships = [rel.key for rel in cls.__mapper__.relationships]
             
             # Add table node
-            label = f"{{ {table_name} | {'\\l'.join(columns)} | Relationships: {'\\l'.join(relationships)} }}"
+            label = f"{{ {table_name} | {'|'.join(columns)} | Relationships: {'|'.join(relationships)} }}"
             dot.node(table_name, label=label, shape='record')
         
         # Create relationships (edges)
