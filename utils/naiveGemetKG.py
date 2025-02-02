@@ -55,7 +55,7 @@ for s, p, o in gemet_graph.triples((None, SKOS.prefLabel, None)):
 
 
 print("Loaded", len(gemet_labels_de), "German labels from GEMET")
-output_file = "gemet_labels_de.rdf"
+output_file = "gemet_labels_de.json"
 with open(output_file, "w") as f:
     json.dump(gemet_labels_de, f)
 

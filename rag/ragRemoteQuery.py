@@ -72,7 +72,10 @@ def initialize():
         config["dbClient"] = config["dbSearch"]["title"]
         import ragSqlUtils as sq
         import private_remote as pr
-        connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
+        if config["dbSqlite"] != None:
+            connection_string = f'sqlite:///{config["dbSqlite"]}'
+        else:
+            connection_string = f'mysql+pymysql://{pr.mysql["user"]}:{pr.mysql["password"]}@{pr.mysql["host"]}:{pr.mysql["port"]}/{pr.mysql["database"]}'
         config["sql"] = {
             "sq":sq,
             "db":sq.DatabaseUtility(connection_string)
@@ -192,6 +195,8 @@ if __name__ == "__main__":
     parser.add_argument('-P', '--embProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-p', '--llmProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-m', '--llmModel',default = None)      # option that takes a value
+    parser.add_argument('-s', '--sqlite',default = None)      # option that takes a value
+    
     args = parser.parse_args()
     print(args.items, args.lang, args.collection) 
 
@@ -202,6 +207,7 @@ if __name__ == "__main__":
     config["llmProvider"] = args.llmProvider
     config["llmModel"] = args.llmModel
     config["dbProvider"] = args.dbProvider
+    config["dbSqlite"] = args.sqlite
     if DEBUG: print(config)
     initialize()
 
@@ -228,20 +234,29 @@ if __name__ == "__main__":
                 print("T",tsearchResult)
                 print("C",csearchResult)
                 # wrong. csearch returns chunk indices, tsearch returns title indices
+                # replace vector indices with item ids
+                titleItems = config["sql"]["db"].search(config["sql"]["sq"].Item, filters=[config["sql"]["sq"].Item.itemIdx.in_([idx["id"] for idx in tsearchResult])])
+                for i,item in enumerate(titleItems):
+                    tsearchResult[i]["id"] = item.id                
+                chunks = config["sql"]["db"].search(config["sql"]["sq"].Chunk, filters=[config["sql"]["sq"].Chunk.chunkIdx.in_([idx["id"] for idx in csearchResult])])
+                for i,chunk in enumerate(chunks):
+                    csearchResult[i]["id"] = chunk.itemId
+                if DEBUG: print(titleItems,chunks)
                 # TODO: find chunk and title item id in separate lists and merge them
                 searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
                 if DEBUG: print(searchResult)
                 print("S",searchResult)
                 if len(searchResult) > 0:
                     #indices = [f["id"] for f in searchResult["data"]]
-                    indices = [f["id"] for f in searchResult]
-                    if DEBUG: print("Indices:",indices)
-                    items = config["sql"]["db"].find_items(indices)
-                    if DEBUG: print(items)
-                    itemIds = [i[0] for i in items][:config["dbItems"]]
+                    # vector indices have been converted to itemIds already
+                    # restrict here to number given in config
+                    itemIds = [f["id"] for f in searchResult][:config["dbItems"]]
+                    if DEBUG: print("ItemIds:",itemIds)
+                    items = config["sql"]["db"].search(config["sql"]["sq"].Item, filters=[config["sql"]["sq"].Item.id.in_(itemIds)])
+                    if DEBUG: print(len(items), " items:",items)
                     # here files is also item names
-                    files = [i[1] for i in items][:config["dbItems"]]
-                    if DEBUG: print(itemIds)
+                    files = [i.name for i in items]
+                    if DEBUG: print("Files:",files)
                     # search for title and fulltext in one go
                     titles = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
                         filters=[
@@ -260,7 +275,7 @@ if __name__ == "__main__":
                                 config["sql"]["sq"].Snippet.chunkId == None
                         ]
                     )
-                    if DEBUG: print([t.id for t in fulltexts])
+                    if DEBUG: print([(t.id,t.itemId) for t in fulltexts])
                     results = [(files[i], titles[i].content, fulltexts[i].content) for i in range(len(itemIds))]
                 else:
                     results = []
