@@ -60,6 +60,9 @@ huggingface = {
 # /opt/llama/cpu/bin/llama-server -m /opt/llama/models/jina-embeddings-v2-base-de-Q5_K_M.gguf -c 0 -b 1000 -ub 1000  --embeddings --port 8085   
 # or 
 # /opt/llama/cpu/bin/llama-server -m /opt/llama/models/jina-embeddings-v2-base-de-Q5_K_M.gguf -c 0 -b 1000 -ub 1000  --embeddings --port 8085 --log-disable
+# local gpu server via ssh from this machine:
+# ssh -L 8085:localhost:11434 user@gpu-machine 
+# make sure to use proper models, e.g. bge-m3 and llama-3.2 or mistral-nemo 
 localllama = {
     "embUrl":"http://localhost:8085/v1/embeddings",
     "embMdl":"bge-m3-Q4_K_M",

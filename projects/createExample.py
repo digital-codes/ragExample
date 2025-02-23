@@ -67,6 +67,9 @@ preprocessor = rt.PreProcessor()
 # get embedder. use different provider if desired
 embedder = rag.Embedder(provider="localllama") # deepinfra")
 
+# when using akudesk ollama, set embedder model to bge-m3, not the quantized version
+embedder.model = "bge-m3"
+
 # create project dir
 if not os.path.exists(exampleConfig["location"]):
     os.makedirs(exampleConfig["location"])
@@ -271,9 +274,13 @@ for type in ["title","chunk","summary"]:
     print(f"Processing {len(results)}, type {type}, lang {lang}")
     for r in results:
         embedding = embedder.encode(r.content)
-        vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
-        # Compute the L2 norm
-        norm = np.linalg.norm(vector)
+        try:
+            vector = np.array(embedding["data"][0]["embedding"]).astype(np.float32)
+            # Compute the L2 norm
+            norm = np.linalg.norm(vector)
+        except TypeError as e:
+            print(f"Error processing {r.id}: {e}",embedding)
+            exit()
 
         # Normalize the vector
         if norm != 0:

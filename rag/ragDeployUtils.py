@@ -144,7 +144,7 @@ class Embedder:
                 else:  
                     return response.json()
             else:
-                print("Encode error:",response.status_code)
+                print("Encode error:",response.status_code) #,self.url,hdrs,data)
                 return None
 
 
