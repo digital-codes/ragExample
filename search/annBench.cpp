@@ -18,7 +18,12 @@
 
 // configure like so:
 // avx512 not working on tux3
-// cmake -B build_2025_1 . -DFAISS_ENABLE_C_API=ON -DCMAKE_BUILD_TYPE=Release -DFAISS_OPT_LEVEL=avx2 -DBLA_VENDOR=Intel10_64_dyn -DFAISS_ENABLE_GPU=OFF -DBUILD_SHARED_LIBS=ON
+// cmake -B build_2025_1 . -DFAISS_ENABLE_C_API=ON -DCMAKE_BUILD_TYPE=Release -DFAISS_OPT_LEVEL=avx2 -DBLA_VENDOR=Intel10_64_dyn -DFAISS_ENABLE_GPU=OFF -DBUILD_SHARED_LIBS=ON --install-prefix=/opt/faiss  -DFAISS_USE_LTO=ON -DBUILD_TESTING=OFF
+
+// then 
+// make -C build_2025_1 -j faiss_avx2 
+// make -C build_2025_1 install -j
+
 
 /* oneapi 2025_1
 kugel@tux3:~/temp/py/ragExample/search$ ./annBench_gen 
