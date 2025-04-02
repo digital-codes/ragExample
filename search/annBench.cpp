@@ -15,6 +15,33 @@
 // -O3 important!
 // use -l faiss (generic gpu support) or -l faiss_avx2. on intel generic appears to be faster
 // results on tux3 (new intel i9) vs akudesk (old intel i7)
+
+// configure like so:
+// avx512 not working on tux3
+// cmake -B build_2025_1 . -DFAISS_ENABLE_C_API=ON -DCMAKE_BUILD_TYPE=Release -DFAISS_OPT_LEVEL=avx2 -DBLA_VENDOR=Intel10_64_dyn -DFAISS_ENABLE_GPU=OFF -DBUILD_SHARED_LIBS=ON
+
+/* oneapi 2025_1
+kugel@tux3:~/temp/py/ragExample/search$ ./annBench_gen 
+FAISS is compiled with GPU support: OPTIMIZE GENERIC 
+Benchmarking with 1000000 vectors of dimension 768
+Creating embeddings time: 4461 ms
+Parallel Brute-force time: 196 ms
+Faiss indexing time: 1201 ms
+faiss searching time: 141 ms
+----
+kugel@tux3:~/temp/py/ragExample/search$ ./annBench_avx 
+FAISS is compiled with GPU support: OPTIMIZE AVX2 
+Number of faiss threads used: 16
+Benchmarking with 1000000 vectors of dimension 768
+Creating embeddings time: 4481 ms
+Parallel Brute-force time: 202 ms
+Faiss indexing time: 1198 ms
+faiss searching time: 120 ms
+----
+
+*/
+
+
 /*
 kugel@tux3:~/temp/py/ragExample/search$ ./annBench 
 FAISS is compiled with GPU support: GENERIC 
