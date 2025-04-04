@@ -3,6 +3,8 @@ import sys
 import requests
 import time
 from ragInstrumentation import measure_execution_time
+import uuid
+import json
 
 import private_remote as pr
 import ragConfig as cfg
@@ -278,6 +280,80 @@ class Llm:
             return text, tokens
         else:
             return None
+
+    # @measure_execution_time
+    def queryStream(self, query, size=100, id=None):
+        """
+        Returns a single chunk from a streaming chat response.
+        Stores the open stream in self.streams, keyed by id, for continued reading.
+
+        Args:
+            query (str): The query string to be sent to the model.
+            size (int, optional): Max words in response. Defaults to 100.
+            id (str or None): Stream session ID. If None, starts a new session.
+
+        Returns:
+            tuple or None: (id, content, stop), or None if error or complete.
+        """
+        if not hasattr(self, "streams"):
+            self.streams = {}
+
+        # Start a new stream
+        if id is None:
+            id = str(uuid.uuid4())
+            richQuery = f"""
+            You are an intelligent assistant.
+            The question is:
+            {query}
+            Respond in {self.lang} language with a limit of {size} {self.lang} words.
+            """
+
+            data = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": richQuery, "temperature": self.temperature}],
+                "stream": True
+            }
+
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}",
+            }
+
+            response = requests.post(self.url, headers=headers, json=data, stream=True)
+            if response.status_code != 200:
+                return None
+
+            # Store iterator for future calls
+            self.streams[id] = response.iter_lines(decode_unicode=True)
+
+        # Continue reading one chunk from stream
+        try:
+            stream = self.streams[id]
+            for line in stream:
+                if line.startswith("data: "):
+                    payload = line[6:]
+                    if payload.strip() == "[DONE]":
+                        del self.streams[id]
+                        return id, "", True
+                    try:
+                        data = json.loads(payload)
+                        choice = data["choices"][0]
+                        delta = choice["delta"]
+                        content = delta.get("content", "")
+                        finish_reason = choice.get("finish_reason")
+                        if finish_reason == "stop":
+                            del self.streams[id]
+                            return id, content, True  # return content even if ""
+                        return id, content, False  # return even if content == ""
+                    except Exception:
+                        continue
+        except Exception:
+            # Cleanup on error
+            if id in self.streams:
+                del self.streams[id]
+            return None
+
+        return None
 
     @measure_execution_time
     def summarize(self, text, size=500):
