@@ -196,6 +196,7 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--llmProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-m', '--llmModel',default = None)      # option that takes a value
     parser.add_argument('-s', '--sqlite',default = None)      # option that takes a value
+    parser.add_argument('-S', '--stream',default = False)      # option that takes a value
     
     args = parser.parse_args()
     print(args.items, args.lang, args.collection) 
@@ -208,6 +209,7 @@ if __name__ == "__main__":
     config["llmModel"] = args.llmModel
     config["dbProvider"] = args.dbProvider
     config["dbSqlite"] = args.sqlite
+    config["stream"] = args.stream
     if DEBUG: print(config)
     initialize()
 
