@@ -5,6 +5,7 @@ import time
 from ragInstrumentation import measure_execution_time
 import uuid
 import json
+import re  
 
 import private_remote as pr
 import ragConfig as cfg
@@ -181,15 +182,15 @@ class Llm:
     def __init__(self, provider: str = "deepinfra", lang="de", model=None):
         if provider == "deepinfra":
             self.api_key = pr.deepInfra["apiKey"]
-            self.model = cfg.deepInfra["lngMdl"]
+            self.model = cfg.deepInfra["lngMdl"] if model == None else model
             self.url = cfg.deepInfra["lngUrl"]
         elif provider == "openai":
             self.api_key = pr.openAi["apiKey"]
-            self.model = cfg.openAi["lngMdl"]
+            self.model = cfg.openAi["lngMdl"] if model == None else model
             self.url = cfg.openAi["lngUrl"]
         elif provider == "localllama":
             self.api_key = pr.localllama["apiKey"]
-            self.model = cfg.localllama["lngMdl"]
+            self.model = cfg.localllama["lngMdl"] if model == None else model
             self.url = cfg.localllama["lngUrl"]
         elif provider == "huggingface":
             if model == None:
@@ -681,11 +682,15 @@ class Llm:
             if DEBUG:
                 print(data)
             text = data["choices"][0]["message"]["content"].strip()
+            think_match = re.search(r"<think>(.*?)</think>", text, flags=re.DOTALL)
+            think = think_match.group(1).strip() if think_match else None
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
             tokens = data["usage"]["total_tokens"]
-            return text, tokens, msgs
+            if DEBUG: print("Think:",think)
+            return text, tokens, msgs, think
         else:
             print("LLM failed:",response.status_code)
-            return None, None, None
+            return None, None, None, None
 
     @measure_execution_time
     def followChat(self, query, msgHistory=[], size=100):
@@ -717,11 +722,14 @@ class Llm:
             if DEBUG:
                 print(data)
             text = data["choices"][0]["message"]["content"].strip()
+            think_match = re.search(r"<think>(.*?)</think>", text, flags=re.DOTALL)
+            think = think_match.group(1).strip() if think_match else None
+            text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
             tokens = data["usage"]["total_tokens"]
-            return text, tokens, msgHistory
+            return text, tokens, msgHistory, think
         else:
             print("LLM failed:",response.status_code)
-            return None, None, None
+            return None, None, None, None
 
 
 

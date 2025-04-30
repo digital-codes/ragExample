@@ -36,6 +36,9 @@ local embedder can be used with param: -P localllama
 start embedder service like so (for llama-cpp):
 /opt/llama/bin/llama-server -m /opt/llama/models/bge-m3-Q4_K_M.gguf -c 0 -b 1000 -ub 1000  --embeddings --port 8085
 
+on tux3 do 
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/llama/cpu/lib
+first and use /opt/llama/cpu/bin, or select oneapi/gpu version 
 
 """
 
@@ -184,7 +187,9 @@ def initQuery(context, query, size=200):
     Returns:
         tuple: A tuple containing the answer, tokens, and messages from the query.
     """
-    answer, tokens, msgs  = config["llm"].initChat(context, query, size)
+    answer, tokens, msgs, think  = config["llm"].initChat(context, query, size)
+    if config["think"] and think != None:
+        print("Reasoning:",think)
     return answer, tokens, msgs
 
 @log_query
@@ -200,7 +205,9 @@ def followQuery(query, history, size=200):
     Returns:
         tuple: A tuple containing the answer, tokens, and messages from the LLM follow-up chat.
     """
-    answer, tokens, msgs  = config["llm"].followChat(query, history, size)
+    answer, tokens, msgs, think  = config["llm"].followChat(query, history, size)
+    if config["think"] and think != None:
+        print("Reasoning:",think)
     return answer, tokens, msgs
 
 # Step 5: Run the RAG system
@@ -215,6 +222,7 @@ if __name__ == "__main__":
     parser.add_argument('-m', '--llmModel',default = None)      # option that takes a value
     parser.add_argument('-s', '--sqlite',default = None)      # option that takes a value
     parser.add_argument('-S', '--stream',default = False)      # option that takes a value
+    parser.add_argument('-t', '--think',default = None)      # option that takes a value
     
     args = parser.parse_args()
     print(args.items, args.lang, args.collection) 
@@ -228,6 +236,7 @@ if __name__ == "__main__":
     config["dbProvider"] = args.dbProvider
     config["dbSqlite"] = args.sqlite
     config["stream"] = args.stream
+    config["think"] = True if args.think else False
     if DEBUG: print(config)
     initialize()
 

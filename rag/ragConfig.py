@@ -13,7 +13,10 @@ deepInfra = {
     "embToks": 8192,
     "embSize":1024,
     "lngMdl": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-    "lngToks": 128*1024
+    "lngToks": 128*1024,
+    "lngMdl_1": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "lngMdl_2": "deepseek-ai/DeepSeek-R1-Turbo",
+    "lngMdl_3": "microsoft/Phi-4-multimodal-instruct",
 }
 
 # openai
