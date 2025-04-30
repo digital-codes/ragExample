@@ -94,6 +94,15 @@ using Matrix = Eigen::MatrixXf;
  * @return A matrix containing the loaded and normalized vectors.
  * @throws std::runtime_error If the file cannot be opened or the specified
  *         number of vectors cannot be read.
+ * 
+ * Eigen, by default, stores matrices in Column-Major layout — but your file contains row-major data (i.e., each embedding vector is stored sequentially, as written in Python using .tofile() from a (n, dim) array).
+    So, when you load that binary file directly into a default Eigen matrix, you're interpreting the data with the wrong stride, resulting in scrambled values.
+    ✅ Fix: Force RowMajor layout in Eigen
+    Change your matrix definition to:
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> embeddings(num_vectors, dim);
+    That ensures that the memory layout in C++ matches what Python wrote:
+    Python NumPy .tofile() → row-major binary
+ * 
  */
 Matrix load_vectors_from_file(const std::string &filename, int num_vectors, int dim)
 {
@@ -103,7 +112,9 @@ Matrix load_vectors_from_file(const std::string &filename, int num_vectors, int 
         throw std::runtime_error("Error: Cannot open file " + filename);
     }
 
-    Matrix embeddings(num_vectors, dim);
+    // Matrix embeddings(num_vectors, dim);
+    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> embeddings(num_vectors, dim);
+
     file.read(reinterpret_cast<char *>(embeddings.data()), num_vectors * dim * sizeof(float));
 
     if (!file)
@@ -111,10 +122,19 @@ Matrix load_vectors_from_file(const std::string &filename, int num_vectors, int 
         throw std::runtime_error("Error: Unable to read the specified number of vectors.");
     }
 
+    // Print the first row as floats
+    /*
+    std::cout << "First row: ";
+    for (int j = 0; j < dim; ++j)
+    {
+        std::cout << embeddings(0, j) << " ";
+    }
+    std::cout << std::endl;
+    */
     // Normalize each vector
     for (int i = 0; i < num_vectors; ++i)
     {
-        embeddings.row(i) /= embeddings.row(i).norm();
+        embeddings.row(i) = embeddings.row(i).normalized();  // important
     }
 
     return embeddings;
@@ -154,7 +174,9 @@ std::vector<std::pair<int, float>> parallel_brute_force_search(const Vector &que
             std::vector<std::pair<int, float>> local_results;
 
             for (size_t i = start_idx; i < end_idx; ++i) {
-                float similarity = query.dot(embeddings.row(i));
+                Eigen::VectorXf embedding_i = embeddings.row(i); //.transpose();
+                float similarity = query.dot(embedding_i);
+                // float similarity = query.dot(embeddings.row(i));
                 local_results.emplace_back(i, similarity);
             }
 

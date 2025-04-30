@@ -271,8 +271,16 @@ if __name__ == "__main__":
                 if DEBUG: print(titleItems,chunks)
                 # TODO: find chunk and title item id in separate lists and merge them
                 searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
+                # Remove duplicates by keeping only the first occurrence of each id
+                unique_ids = set()
+                filtered_search_result = []
+                for item in searchResult:
+                    if item["id"] not in unique_ids:
+                        unique_ids.add(item["id"])
+                        filtered_search_result.append(item)
+                searchResult = filtered_search_result
                 if DEBUG: print(searchResult)
-                print(searchResult)
+                #print("Filtered search result:",searchResult)
                 if len(searchResult) > 0:
                     #indices = [f["id"] for f in searchResult["data"]]
                     # vector indices have been converted to itemIds already
