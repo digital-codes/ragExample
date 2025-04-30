@@ -258,7 +258,7 @@ print(f"Embedder: {vecMdl} - {vecSize}")
 
 # NB not clear if creating vectors for titles is actually useful, but we do it here
 # for demonstration. probably a regular fulltext search using wildcards is more useful
-# do not create vectors for fulltext as thie will normally overflow the embedder token limit
+# do not create vectors for fulltext as this will normally overflow the embedder token limit
 for type in ["title","chunk","summary"]:
     collection = f"{base}_{vecSize:04}_{type}_{lang}"
     vector_file = os.sep.join([path,f"{base}_{vecSize:04}_{type}_{lang}.{ext}"])

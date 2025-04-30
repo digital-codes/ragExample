@@ -272,6 +272,7 @@ if __name__ == "__main__":
                 # TODO: find chunk and title item id in separate lists and merge them
                 searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
                 if DEBUG: print(searchResult)
+                print(searchResult)
                 if len(searchResult) > 0:
                     #indices = [f["id"] for f in searchResult["data"]]
                     # vector indices have been converted to itemIds already

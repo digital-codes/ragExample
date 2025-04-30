@@ -174,9 +174,10 @@ std::vector<std::pair<int, float>> parallel_brute_force_search(const Vector &que
     }
 
     // Global top N sorting
-    std::partial_sort(all_results.begin(), all_results.begin() + std::min(top_n, static_cast<int>(all_results.size())), all_results.end(),
-                      [](const auto &a, const auto &b)
-                      { return a.second > b.second; });
+    // Sort all results to get the top N highest values
+    std::sort(all_results.begin(), all_results.end(),
+              [](const auto &a, const auto &b)
+              { return a.second > b.second; });
     all_results.resize(std::min(top_n, static_cast<int>(all_results.size())));
 
     return all_results;

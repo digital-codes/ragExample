@@ -131,7 +131,7 @@ class PreProcessor():
 
 
     @measure_execution_time
-    def chunk(self, text, size=200):
+    def chunk_old(self, text, size=200):
         """
         Split the text into smaller chunks of a fixed size with an overlap.
         
@@ -174,3 +174,48 @@ class PreProcessor():
             return chunks
 
 
+    @measure_execution_time
+    def chunk(self, text, size=200, overlap=None):
+        """
+        Split the text into smaller chunks of a fixed size with optional overlap.
+        
+        Args:
+            text (str): The text to split.
+            size (int): The size of each chunk in words.
+            overlap (int or float): Number of overlapping words between chunks,
+                                    or percentage (0–1). Default is 20% of size.
+        
+        Returns:
+            list: A list of text chunks.
+        """
+        if DEBUG: print(f"Chunking text: {text}")
+        
+        ctext, wc, sents = self.clean(text)
+        if wc is None or len(sents) == 1:  # most likely nonsense input!
+            if DEBUG: print("No text or too short")
+            return [""]
+        elif wc <= size:
+            if DEBUG: print("Text is too short for chunking")
+            return [ctext]
+        
+        if overlap is None:
+            overlap = int(size * 0.2)
+        elif isinstance(overlap, float):  # percentage given
+            overlap = int(size * overlap)
+        
+        print(f"Chunking {wc} words, {len(sents)} sentences into chunks of {size} with overlap {overlap}")
+        
+        chunks = []
+        words = ctext.split()
+        if DEBUG: print(f"Words: {words}")
+        start = 0
+
+        while start < len(words):
+            end = min(start + size, len(words))
+            chunk_words = words[start:end]
+            chunks.append(" ".join(chunk_words))
+            if end == len(words):
+                break
+            start = start + size - overlap  # move forward with overlap
+
+        return chunks
