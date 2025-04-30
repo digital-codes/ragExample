@@ -21,6 +21,24 @@ Main Execution:
     - Initializes the configuration and database.
     - Continuously prompts the user for queries, processes them, and prints the answers.
 """
+
+"""
+Example for local search with annService:
+  python3 rag/ragRemoteQuery.py -d localsearch -s projects/ksk.db -c ksk_1024
+
+start annService like so:
+ ./annService 1024 9001 ../data/ksk_1024_title_de.vec ../data/ksk_1024_chunk_de.vec
+
+more vectors may be loaded
+
+local embedder can be used with param: -P localllama
+
+start embedder service like so (for llama-cpp):
+/opt/llama/bin/llama-server -m /opt/llama/models/bge-m3-Q4_K_M.gguf -c 0 -b 1000 -ub 1000  --embeddings --port 8085
+
+
+"""
+
 import pandas as pd
 import argparse 
 
@@ -233,8 +251,6 @@ if __name__ == "__main__":
                 tsearchResult = tsearchResult["data"] if tsearchResult != None else []
                 csearchResult = csearchResult["data"] if csearchResult != None else []
                 if DEBUG: print(tsearchResult,csearchResult)
-                print("T",tsearchResult)
-                print("C",csearchResult)
                 # wrong. csearch returns chunk indices, tsearch returns title indices
                 # replace vector indices with item ids
                 titleItems = config["sql"]["db"].search(config["sql"]["sq"].Item, filters=[config["sql"]["sq"].Item.itemIdx.in_([idx["id"] for idx in tsearchResult])])
@@ -247,7 +263,6 @@ if __name__ == "__main__":
                 # TODO: find chunk and title item id in separate lists and merge them
                 searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
                 if DEBUG: print(searchResult)
-                print("S",searchResult)
                 if len(searchResult) > 0:
                     #indices = [f["id"] for f in searchResult["data"]]
                     # vector indices have been converted to itemIds already
@@ -278,7 +293,9 @@ if __name__ == "__main__":
                         ]
                     )
                     if DEBUG: print([(t.id,t.itemId) for t in fulltexts])
-                    results = [(files[i], titles[i].content, fulltexts[i].content) for i in range(len(itemIds))]
+                    # itemids may be larger than items!
+                    results = [(files[i], titles[i].content, fulltexts[i].content) for i in range(len(items))]
+                    if DEBUG: print("Results:",results)
                 else:
                     results = []
                     
