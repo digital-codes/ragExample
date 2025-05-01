@@ -17,8 +17,10 @@ import private_remote as pr
 
 from langchain_community.chat_models import ChatDeepInfra
 from langchain_community.vectorstores import FAISS
-from langchain.chains import RetrievalQA
-
+from langchain.chains import RetrievalQA  # outdated
+from langchain import hub
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains import create_retrieval_chain
 
 def setup(storeName, local=False):
     # Initialize your custom embedder
@@ -36,7 +38,7 @@ def setup(storeName, local=False):
         storeName, embedder, allow_dangerous_deserialization=True
     )
     print("FAISS index loaded successfully.")    
-    return vector_store, embedder
+    return vector_store
 
     
 def main():
@@ -47,7 +49,7 @@ def main():
     storeName = args.storeName
     local = args.local
 
-    vectorstore, embedder = setup(storeName, local)
+    vectorstore = setup(storeName, local)
 
     # Setup DeepInfra LLM
     llm = ChatDeepInfra(model="meta-llama/Llama-3.3-70B-Instruct-Turbo",deepinfra_api_token=pr.deepInfra["apiKey"])
@@ -62,12 +64,19 @@ def main():
     # for doc in docs:
     #    print(doc)
     
-    
+    # See full prompt at https://smith.langchain.com/hub/rlm/rag-prompt
+    prompt = hub.pull("rlm/rag-prompt")
+    #print("Prompt loaded successfully.",prompt)
     rag_chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
         return_source_documents=True
     )
+
+    combine_docs_chain = create_stuff_documents_chain(
+        llm, prompt
+    )
+    rag_chain_unused = create_retrieval_chain(retriever, combine_docs_chain)
 
     # Step 5: Chat loop
     while True:
@@ -76,6 +85,7 @@ def main():
             break
 
         result = rag_chain.invoke({"query": query})
+        #result = rag_chain.invoke({"input": query})
 
         print("\nAnswer:")
         print(result["result"])
