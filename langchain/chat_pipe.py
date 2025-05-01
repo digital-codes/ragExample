@@ -6,6 +6,7 @@
 
 # for improvements: https://python.langchain.com/docs/how_to/qa_sources/
 # https://python.langchain.com/docs/how_to/qa_citations/
+# https://python.langchain.com/docs/how_to/qa_streaming/
 
 import sys
 import os
