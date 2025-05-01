@@ -101,7 +101,6 @@ def initStore(name):
         document_10,
     ]
     uuids = [str(uuid4()) for _ in range(len(documents))]
-
     vector_store.add_documents(documents=documents, ids=uuids)
 
     vector_store.save_local("faiss_test_index")
@@ -127,4 +126,22 @@ results = vector_store.similarity_search(
 )
 for res in results:
     print(f"* {res.page_content} [{res.metadata}]")
+
+results = vector_store.similarity_search_with_relevance_scores(
+    "LangGraph is the best framework for building stateful, agentic apps",
+    k=3,
+    filter={"source": "tweet"},
+)
+print("################################################")
+# 
+for res, score in results:
+    print(f"* [SIM={score:3f}] {res.page_content} [{res.metadata}]")
+    print(f"  [ID={res.id}]")
+    
+    # Find related document
+    document = vector_store.docstore.search(res.id)
+    if document:
+        print(f"Document found: {document.page_content} [{document.metadata}]")
+    else:
+        print(f"No document found with ID: {res.id}")
 
