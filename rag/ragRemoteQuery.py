@@ -312,7 +312,7 @@ if __name__ == "__main__":
                     )
                     if DEBUG: print([(t.id,t.itemId) for t in fulltexts])
                     # itemids may be larger than items!
-                    results = [(files[i], titles[i].content, fulltexts[i].content) for i in range(len(items))]
+                    results = [(files[i], titles[i].content, "" if len(fulltexts) < (i + 1) else fulltexts[i].content) for i in range(len(items))]
                     if DEBUG: print("Results:",results)
                 else:
                     results = []
