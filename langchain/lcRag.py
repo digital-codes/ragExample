@@ -15,11 +15,8 @@ import private_remote as pr
 from langchain.chat_models import init_chat_model
 os.environ["OPENAI_API_KEY"] = pr.openAi["apiKey"]
 
-# llm = init_chat_model("gpt-4o-mini", model_provider="openai")
-os.environ["OPENAI_API_KEY"] = pr.openAi["apiKey"]
+# chat providers limited. openAi work. deepinfra not supported here. huggingface complicated or not working
 llm = init_chat_model("gpt-4o-mini", model_provider="openai")
-
-#llm = ChatDeepInfra(model="meta-llama/Llama-3.3-70B-Instruct-Turbo",deepinfra_api_token=pr.deepInfra["apiKey"])
 
 from langchain_community.embeddings import DeepInfraEmbeddings
 embMdl = "BAAI/bge-m3"
@@ -171,13 +168,8 @@ for step in graph.stream(
 ########
 
 chat_history = graph.get_state(config).values["messages"]
-for message in chat_history:
-    message.pretty_print()
+chat_history = graph.get_state(config).values["messages"]
+with open("chat_history.txt", "w") as f:
+    f.writelines([message.content + "\n\n" for message in chat_history])
 
-    
-graph = graph_builder.compile(checkpointer=memory)
-
-
-with open("graph2.png","wb") as f:
-    f.write(graph.get_graph().draw_mermaid_png())
-print("Graph image written: graph2.png")
+print("Chat history written: chat_history.txt")
