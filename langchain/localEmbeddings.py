@@ -1,3 +1,4 @@
+# see https://python.langchain.com/docs/how_to/custom_embeddings/
 from typing import List
 from langchain_core.embeddings import Embeddings
 import requests 

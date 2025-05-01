@@ -1,3 +1,23 @@
+# see https://python.langchain.com/docs/integrations/vectorstores/faiss/
+# and https://python.langchain.com/docs/integrations/text_embedding/deepinfra/
+
+# filters: https://python.langchain.com/docs/integrations/vectorstores/faiss/#query-directly
+# and https://www.mongodb.com/docs/manual/reference/operator/query/
+
+# Some MongoDB query and projection operators are supported for more advanced metadata filtering. The current list of supported operators are as follows:
+#     $eq (equals)
+#     $neq (not equals)
+#     $gt (greater than)
+#     $lt (less than)
+#     $gte (greater than or equal)
+#     $lte (less than or equal)
+#     $in (membership in list)
+#     $nin (not in list)
+#     $and (all conditions must match)
+#     $or (any condition must match)
+#     $not (negation of condition)
+
+
 import os
 import sys 
 
@@ -48,7 +68,7 @@ def initStore(name):
 
     document_3 = Document(
         page_content="Building an exciting new project with LangChain - come check it out!",
-        metadata={"source": "tweet"},
+        metadata={"source": "tweet","tag":"xx"},
     )
 
     document_4 = Document(
@@ -68,13 +88,13 @@ def initStore(name):
 
     document_7 = Document(
         page_content="The top 10 soccer players in the world right now.",
-        metadata={"source": "website"},
+        metadata={"source": "website","tag":"yy"},
     )
 
     document_8 = Document(
         page_content="LangGraph is the best framework for building stateful, agentic applica\
     tions!",
-        metadata={"source": "tweet"},
+        metadata={"source": "tweet","tag":"yy"},
     )
 
     document_9 = Document(
@@ -130,7 +150,7 @@ for res in results:
 results = vector_store.similarity_search_with_relevance_scores(
     "LangGraph is the best framework for building stateful, agentic apps",
     k=3,
-    filter={"source": "tweet"},
+    filter={"source": "tweet","tag":{"$in": ["xx","yy"]}},
 )
 print("################################################")
 # 
