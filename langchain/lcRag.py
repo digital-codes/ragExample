@@ -13,7 +13,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from langchain_core.tools import tool
 
-PROVIDER = "deepinfra"  # or "openai"
+PROVIDER = "ollama" # "deepinfra"  # or "openai"
 
 # maybe check https://python.langchain.com/docs/how_to/qa_chat_history_how_to/
 
@@ -30,7 +30,20 @@ elif PROVIDER == "local":
     llm = LC.ChatLocal(parrot_buffer_length=3, model="my_custom_model")
     print("Using local model",llm)
     llm_with_tools = None
-
+elif PROVIDER == "ollama":
+    from langchain.chat_models import init_chat_model
+    from langchain_community.chat_models import ChatLlamaCpp
+    # https://python.langchain.com/api_reference/langchain/chat_models/langchain.chat_models.base.init_chat_model.html
+    # chat providers limited. openAi work. deepinfra not supported here. huggingface complicated or not working
+    # if ollama runs on remote machine, use ssh tunnel like:
+    # ssh -L 8085:localhost:11434 user@remote
+    models = ["granite3.3:2b","llama3.2:latest"] # on pycontabo. small deeepseek and phi don't support tools
+    llm = init_chat_model(models[0], 
+                          model_provider="ollama",
+                          base_url="http://localhost:8085",
+                          temperature=0.1,
+                          max_tokens=10000,
+                          )
     
 else:
     from langchain.chat_models import init_chat_model
