@@ -1,3 +1,11 @@
+import sys
+import os
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGSMITH_TRACING"] = "false"
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../rag')))
+import private_remote as pr 
+
 from langchain_core.messages import SystemMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
@@ -7,20 +15,23 @@ from langchain_core.tools import tool
 
 PROVIDER = "deepinfra"  # or "openai"
 
-import sys
-import os
+# maybe check https://python.langchain.com/docs/how_to/qa_chat_history_how_to/
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../rag')))
-import private_remote as pr 
 
 
 if PROVIDER == "deepinfra":
     from langgraph.prebuilt import create_react_agent    
     from langchain_community.chat_models import ChatDeepInfra
     # Setup DeepInfra LLM
-    model = ChatDeepInfra(model="meta-llama/Llama-3.3-70B-Instruct-Turbo",deepinfra_api_token=pr.deepInfra["apiKey"])
+    llm = ChatDeepInfra(model="meta-llama/Llama-3.3-70B-Instruct-Turbo",deepinfra_api_token=pr.deepInfra["apiKey"])
+    llm_with_tools = None
+elif PROVIDER == "local":
+    import localChatModel as LC
+    llm = LC.ChatLocal(parrot_buffer_length=3, model="my_custom_model")
+    print("Using local model",llm)
     llm_with_tools = None
 
+    
 else:
     from langchain.chat_models import init_chat_model
     os.environ["OPENAI_API_KEY"] = pr.openAi["apiKey"]
@@ -54,14 +65,20 @@ def query_or_respond(state: MessagesState):
     """Generate tool call for retrieval or respond."""
     global llm_with_tools
     try:
-        if PROVIDER == "deepinfra":
-            if llm_with_tools is None:
-                print("Creating new agent with tool")
-                # Create a new agent with the tool
-                llm_with_tools = create_react_agent(model, tools=[retrieve])
-                print("... done")
+        if PROVIDER == "deepinfra" or PROVIDER == "local":
+            #if llm_with_tools is None:
+            #from langchain.agents import create_react_agent
+            from langgraph.prebuilt import create_react_agent
+            from langchain import hub
+            prompt = hub.pull("rlm/rag-prompt")
+            print("Creating new agent with tool")
+            # Create a new agent with the tool
+            # llm_with_tools = create_react_agent(llm, tools=[retrieve],prompt=prompt)
+            llm_with_tools = create_react_agent(llm, [retrieve], checkpointer=memory)
+            print("... done")
         else:
             llm_with_tools = llm.bind_tools([retrieve])
+
         response = llm_with_tools.invoke(state["messages"])
     except Exception as e:
         print(f"Error invoking LLM: {e}")

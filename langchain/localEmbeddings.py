@@ -3,31 +3,17 @@ from typing import List
 from langchain_core.embeddings import Embeddings
 import requests 
 
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../rag')))
+from ragInstrumentation import measure_execution_time
+
 # from ragInstrumentation import measure_execution_time
 
 DEBUG = False
 
 class LocalEmbeddings(Embeddings):
-    """ParrotLink embedding model integration.
-
-    # TODO: Populate with relevant params.
-    Key init args — completion params:
-        model: str
-            Name of ParrotLink model to use.
-
-    See full list of supported init args and their descriptions in the params section.
-
-    # TODO: Replace with relevant init params.
-    Instantiate:
-        .. code-block:: python
-
-            from langchain_parrot_link import LocalEmbeddings
-
-            embed = LocalEmbeddings(
-                model="...",
-                # api_key="...",
-                # other params...
-            )
+    """local embedding model integration.
 
     Embed single text:
         .. code-block:: python
@@ -39,29 +25,6 @@ class LocalEmbeddings(Embeddings):
 
             # TODO: Example output.
 
-    # TODO: Delete if token-level streaming isn't supported.
-    Embed multiple text:
-        .. code-block:: python
-
-             input_texts = ["Document 1...", "Document 2..."]
-            embed.embed_documents(input_texts)
-
-        .. code-block:: python
-
-            # TODO: Example output.
-
-    # TODO: Delete if native async isn't supported.
-    Async:
-        .. code-block:: python
-
-            await embed.aembed_query(input_text)
-
-            # multiple:
-            # await embed.aembed_documents(input_texts)
-
-        .. code-block:: python
-
-            # TODO: Example output.
 
     """
 
@@ -104,10 +67,12 @@ class LocalEmbeddings(Embeddings):
         if response is None:
             raise ValueError("Failed to connect to the local embedding service.")
 
+    @measure_execution_time
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed search docs."""
         return self.queryLocal(texts)
 
+    @measure_execution_time
     def embed_query(self, text: str) -> List[float]:
         """Embed query text."""
         return self.queryLocal([text])[0]

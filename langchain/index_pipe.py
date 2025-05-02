@@ -6,6 +6,7 @@ import json
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../rag')))
 import private_remote as pr 
+from ragInstrumentation import measure_execution_time
 
 SAVE_DOCS = True
 
@@ -16,6 +17,7 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain import hub
 
+@measure_execution_time
 def loadDocs(docpath):
     try:
         from docling.langchain import DoclingLangChainLoader
@@ -56,6 +58,7 @@ def loadDocs(docpath):
 
     return documents, doc_ids
 
+@measure_execution_time
 def setup(docpath,indexname,local=False):
     # Step 1: Load Docling documents
     documents, doc_ids = loadDocs(docpath)
