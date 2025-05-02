@@ -151,6 +151,39 @@ class Embedder:
                 return None
 
 
+    @measure_execution_time
+    def compare(self, first, second):
+        """
+        Compare two vectors and compute their cosine similarity.
+
+        This method takes two input vectors, normalizes them, and calculates the 
+        cosine similarity between them. Cosine similarity is a measure of similarity 
+        between two non-zero vectors of an inner product space that measures the cosine 
+        of the angle between them.
+
+        Args:
+            first (list or numpy.ndarray): The first vector to compare.
+            second (list or numpy.ndarray): The second vector to compare.
+
+        Returns:
+            float: The cosine similarity between the two vectors. A value of 1 indicates 
+            that the vectors are identical in direction, while a value of -1 indicates 
+            they are diametrically opposed.
+        """
+        import numpy as np
+        a = np.array(first)
+        b = np.array(second)
+
+        # Normalize both vectors
+        a_norm = a / np.linalg.norm(a)
+        b_norm = b / np.linalg.norm(b)
+
+        # Compute cosine similarity
+        cosine_similarity = np.dot(a_norm, b_norm)
+        return cosine_similarity
+
+
+
 class Llm:
     """
     A class to interact with different language model providers for various NLP tasks.
@@ -225,6 +258,7 @@ class Llm:
         self.lang = "german" if lang == "de" else "english"
         self.provider = provider
         self.temperature = 0.2
+        self.maxTokens = 4096 # output
 
     def getModel(self):
         """
@@ -671,6 +705,7 @@ class Llm:
             "model": self.model,
             "messages": msgs,  # msgHistory,
             "temperature": self.temperature,
+            "max_tokens": self.maxTokens,
         }
         if self.provider == "huggingface":
             data["stream"] = False
@@ -713,6 +748,7 @@ class Llm:
             "model": self.model,
             "messages": msgHistory,  # msgHistory,
             "temperature": self.temperature,
+            "max_tokens": self.maxTokens,
         }
         if self.provider == "huggingface":
             data["stream"] = False

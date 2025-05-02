@@ -372,6 +372,12 @@ if __name__ == "__main__":
         else:
             # add assistant answer to msgs
             msgs.append({"role":"assistant","content":answer})
+            # compare last answer to query
+            v1 = config["embedder"].encode(query)["data"][0]["embedding"]
+            v2 = config["embedder"].encode(answer)["data"][0]["embedding"]
+            match = config["embedder"].compare(v1,v2)
+            if match < .5:
+                print("We should run the retriever tool with the new query")
             answer, tokens, msgs = followQuery(query,msgs)
             
         if answer == None:
