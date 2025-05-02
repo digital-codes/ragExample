@@ -210,6 +210,140 @@ def followQuery(query, history, size=200):
         print("Reasoning:",think)
     return answer, tokens, msgs
 
+
+def retrieve_context(query):
+    """
+    Retrieves the context for the given query based on the search results.
+
+    Args:
+        query (str): The query string to be processed.
+
+    Returns:
+        str: The context string for the query.
+    """
+    embedding = config["embedder"].encode(query)
+    searchVector = embedding["data"][0]["embedding"]
+    if DEBUG: print("search vector:",searchVector)
+    if config["dbProvider"] == "zilliz":
+        searchResult = config["dbClient"].searchItem(searchVector, limit=config["dbItems"], fields=["itemId","title","file","meta","text"])
+        if DEBUG: print(searchResult)
+        files = [f["file"] for f in searchResult["data"]]
+        if DEBUG: print(files)
+        results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= .35]
+    elif config["dbProvider"] == "localsearch":
+        tsearchResult = config["dbSearch"]["title"].searchItem(searchVector, limit=config["dbItems"]*2)
+        csearchResult = config["dbSearch"]["chunk"].searchItem(searchVector, limit=config["dbItems"]*5)
+        tsearchResult = tsearchResult["data"] if tsearchResult != None else []
+        csearchResult = csearchResult["data"] if csearchResult != None else []
+        if DEBUG: print(tsearchResult,csearchResult)
+        # wrong. csearch returns chunk indices, tsearch returns title indices
+        # replace vector indices with item ids
+        titleItems = config["sql"]["db"].search(config["sql"]["sq"].Item, filters=[config["sql"]["sq"].Item.itemIdx.in_([idx["id"] for idx in tsearchResult])])
+        for i,item in enumerate(titleItems):
+            tsearchResult[i]["id"] = item.id                
+        chunks = config["sql"]["db"].search(config["sql"]["sq"].Chunk, filters=[config["sql"]["sq"].Chunk.chunkIdx.in_([idx["id"] for idx in csearchResult])])
+        for i,chunk in enumerate(chunks):
+            csearchResult[i]["id"] = chunk.itemId
+        if DEBUG: print(titleItems,chunks)
+        # TODO: find chunk and title item id in separate lists and merge them
+        searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
+        # Remove duplicates by keeping only the first occurrence of each id
+        unique_ids = set()
+        filtered_search_result = []
+        for item in searchResult:
+            if item["id"] not in unique_ids:
+                unique_ids.add(item["id"])
+                filtered_search_result.append(item)
+        searchResult = filtered_search_result
+        if DEBUG: print(searchResult)
+        #print("Filtered search result:",searchResult)
+        if len(searchResult) > 0:
+            #indices = [f["id"] for f in searchResult["data"]]
+            # vector indices have been converted to itemIds already
+            # restrict here to number given in config
+            itemIds = [f["id"] for f in searchResult][:config["dbItems"]]
+            if DEBUG: print("ItemIds:",itemIds)
+            items = config["sql"]["db"].search(config["sql"]["sq"].Item, filters=[config["sql"]["sq"].Item.id.in_(itemIds)])
+            if DEBUG: print(len(items), " items:",items)
+            # here files is also item names
+            files = [i.name for i in items]
+            if DEBUG: print("Files:",files)
+            # search for title and fulltext in one go
+            titles = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                filters=[
+                    config["sql"]["sq"].Snippet.lang == config["lang"],
+                    config["sql"]["sq"].Snippet.itemId.in_(itemIds),
+                        config["sql"]["sq"].Snippet.type == "title",
+                        config["sql"]["sq"].Snippet.chunkId == None
+                ]
+            )
+            if DEBUG: print([t.id for t in titles])
+            fulltexts = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                filters=[
+                    config["sql"]["sq"].Snippet.lang == config["lang"],
+                    config["sql"]["sq"].Snippet.itemId.in_(itemIds),
+                        config["sql"]["sq"].Snippet.type == "content",
+                        config["sql"]["sq"].Snippet.chunkId == None
+                ]
+            )
+            if DEBUG: print([(t.id,t.itemId) for t in fulltexts])
+            # itemids may be larger than items!
+            results = [(files[i], titles[i].content, "" if len(fulltexts) < (i + 1) else fulltexts[i].content) for i in range(len(items))]
+            if DEBUG: print("Results:",results)
+        else:
+            results = []
+            
+    elif config["dbProvider"] == "pysearch":
+        searchResult = config["dbSearch"]["title"].searchItem(searchVector, limit=config["dbItems"]*2)
+        searchResult = searchResult["data"] if searchResult != None else []
+        if DEBUG: print(searchResult)
+        # wrong. csearch returns chunk indices, tsearch returns title indices
+        if DEBUG: print(searchResult)
+        if len(searchResult) > 0:
+            #indices = [f["id"] for f in searchResult["data"]]
+            indices = [f["id"] for f in searchResult]
+            if DEBUG: print("Indices:",indices)
+            items = config["sql"]["db"].find_items(indices)
+            if DEBUG: print(items)
+            itemIds = [i[0] for i in items][:config["dbItems"]]
+            # here files is also item names
+            files = [i[1] for i in items][:config["dbItems"]]
+            if DEBUG: print(itemIds)
+            # search for title and fulltext in one go
+            titles = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                filters=[
+                    config["sql"]["sq"].Snippet.lang == config["lang"],
+                    config["sql"]["sq"].Snippet.itemId.in_(itemIds),
+                        config["sql"]["sq"].Snippet.type == "title",
+                        config["sql"]["sq"].Snippet.chunkId == None
+                ]
+            )
+            if DEBUG: print([t.id for t in titles])
+            fulltexts = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                filters=[
+                    config["sql"]["sq"].Snippet.lang == config["lang"],
+                    config["sql"]["sq"].Snippet.itemId.in_(itemIds),
+                        config["sql"]["sq"].Snippet.type == "content",
+                        config["sql"]["sq"].Snippet.chunkId == None
+                ]
+            )
+            if DEBUG: print([t.id for t in fulltexts])
+            results = [(files[i], titles[i].content, fulltexts[i].content) for i in range(len(itemIds))]
+        else:
+            results = []
+            
+    else:
+        raise ValueError("Unknown dbProvider")
+    
+    if len(results) == 0:
+        print("No relevant documents found")
+        return "",[]
+
+    context = ""
+    for r in results:
+        context = "\n".join([f"{r[0].split('_chunk')[0]}:{r[1]}",r[2],context])
+    return context, files
+
 # Step 5: Run the RAG system
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -245,130 +379,14 @@ if __name__ == "__main__":
     followUp = False
     while len(query) > 0:
         if not followUp:
-            embedding = config["embedder"].encode(query)
-            searchVector = embedding["data"][0]["embedding"]
-            if DEBUG: print("search vector:",searchVector)
-            if config["dbProvider"] == "zilliz":
-                searchResult = config["dbClient"].searchItem(searchVector, limit=config["dbItems"], fields=["itemId","title","file","meta","text"])
-                if DEBUG: print(searchResult)
-                files = [f["file"] for f in searchResult["data"]]
-                if DEBUG: print(files)
-                results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= .35]
-            elif config["dbProvider"] == "localsearch":
-                tsearchResult = config["dbSearch"]["title"].searchItem(searchVector, limit=config["dbItems"]*2)
-                csearchResult = config["dbSearch"]["chunk"].searchItem(searchVector, limit=config["dbItems"]*5)
-                tsearchResult = tsearchResult["data"] if tsearchResult != None else []
-                csearchResult = csearchResult["data"] if csearchResult != None else []
-                if DEBUG: print(tsearchResult,csearchResult)
-                # wrong. csearch returns chunk indices, tsearch returns title indices
-                # replace vector indices with item ids
-                titleItems = config["sql"]["db"].search(config["sql"]["sq"].Item, filters=[config["sql"]["sq"].Item.itemIdx.in_([idx["id"] for idx in tsearchResult])])
-                for i,item in enumerate(titleItems):
-                    tsearchResult[i]["id"] = item.id                
-                chunks = config["sql"]["db"].search(config["sql"]["sq"].Chunk, filters=[config["sql"]["sq"].Chunk.chunkIdx.in_([idx["id"] for idx in csearchResult])])
-                for i,chunk in enumerate(chunks):
-                    csearchResult[i]["id"] = chunk.itemId
-                if DEBUG: print(titleItems,chunks)
-                # TODO: find chunk and title item id in separate lists and merge them
-                searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
-                # Remove duplicates by keeping only the first occurrence of each id
-                unique_ids = set()
-                filtered_search_result = []
-                for item in searchResult:
-                    if item["id"] not in unique_ids:
-                        unique_ids.add(item["id"])
-                        filtered_search_result.append(item)
-                searchResult = filtered_search_result
-                if DEBUG: print(searchResult)
-                #print("Filtered search result:",searchResult)
-                if len(searchResult) > 0:
-                    #indices = [f["id"] for f in searchResult["data"]]
-                    # vector indices have been converted to itemIds already
-                    # restrict here to number given in config
-                    itemIds = [f["id"] for f in searchResult][:config["dbItems"]]
-                    if DEBUG: print("ItemIds:",itemIds)
-                    items = config["sql"]["db"].search(config["sql"]["sq"].Item, filters=[config["sql"]["sq"].Item.id.in_(itemIds)])
-                    if DEBUG: print(len(items), " items:",items)
-                    # here files is also item names
-                    files = [i.name for i in items]
-                    if DEBUG: print("Files:",files)
-                    # search for title and fulltext in one go
-                    titles = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
-                        filters=[
-                            config["sql"]["sq"].Snippet.lang == config["lang"],
-                            config["sql"]["sq"].Snippet.itemId.in_(itemIds),
-                                config["sql"]["sq"].Snippet.type == "title",
-                                config["sql"]["sq"].Snippet.chunkId == None
-                        ]
-                    )
-                    if DEBUG: print([t.id for t in titles])
-                    fulltexts = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
-                        filters=[
-                            config["sql"]["sq"].Snippet.lang == config["lang"],
-                            config["sql"]["sq"].Snippet.itemId.in_(itemIds),
-                                config["sql"]["sq"].Snippet.type == "content",
-                                config["sql"]["sq"].Snippet.chunkId == None
-                        ]
-                    )
-                    if DEBUG: print([(t.id,t.itemId) for t in fulltexts])
-                    # itemids may be larger than items!
-                    results = [(files[i], titles[i].content, "" if len(fulltexts) < (i + 1) else fulltexts[i].content) for i in range(len(items))]
-                    if DEBUG: print("Results:",results)
-                else:
-                    results = []
-                    
-            elif config["dbProvider"] == "pysearch":
-                searchResult = config["dbSearch"]["title"].searchItem(searchVector, limit=config["dbItems"]*2)
-                searchResult = searchResult["data"] if searchResult != None else []
-                if DEBUG: print(searchResult)
-                # wrong. csearch returns chunk indices, tsearch returns title indices
-                if DEBUG: print(searchResult)
-                if len(searchResult) > 0:
-                    #indices = [f["id"] for f in searchResult["data"]]
-                    indices = [f["id"] for f in searchResult]
-                    if DEBUG: print("Indices:",indices)
-                    items = config["sql"]["db"].find_items(indices)
-                    if DEBUG: print(items)
-                    itemIds = [i[0] for i in items][:config["dbItems"]]
-                    # here files is also item names
-                    files = [i[1] for i in items][:config["dbItems"]]
-                    if DEBUG: print(itemIds)
-                    # search for title and fulltext in one go
-                    titles = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
-                        filters=[
-                            config["sql"]["sq"].Snippet.lang == config["lang"],
-                            config["sql"]["sq"].Snippet.itemId.in_(itemIds),
-                                config["sql"]["sq"].Snippet.type == "title",
-                                config["sql"]["sq"].Snippet.chunkId == None
-                        ]
-                    )
-                    if DEBUG: print([t.id for t in titles])
-                    fulltexts = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
-                        filters=[
-                            config["sql"]["sq"].Snippet.lang == config["lang"],
-                            config["sql"]["sq"].Snippet.itemId.in_(itemIds),
-                                config["sql"]["sq"].Snippet.type == "content",
-                                config["sql"]["sq"].Snippet.chunkId == None
-                        ]
-                    )
-                    if DEBUG: print([t.id for t in fulltexts])
-                    results = [(files[i], titles[i].content, fulltexts[i].content) for i in range(len(itemIds))]
-                else:
-                    results = []
-                    
-            else:
-                raise ValueError("Unknown dbProvider")
-            
-            if len(results) == 0:
+            context, files = retrieve_context(query)
+            if DEBUG: print(context)
+            if context == "":
                 print("No relevant documents found")
                 query = input("\nEnter your query: ")
                 continue
-            context = ""
-            followUp = True
-            for r in results:
-                context = "\n".join([f"{r[0].split('_chunk')[0]}:{r[1]}",r[2],context])
-            if DEBUG: print(context)
             answer, tokens, msgs = initQuery(context, query)
+            followUp = True
         else:
             # add assistant answer to msgs
             msgs.append({"role":"assistant","content":answer})
@@ -378,6 +396,12 @@ if __name__ == "__main__":
             match = config["embedder"].compare(v1,v2)
             if match < .5:
                 print("We should run the retriever tool with the new query")
+                new_context, files = retrieve_context(query)
+                if DEBUG: print(new_context)
+                if new_context == "":
+                    print("No relevant documents found")
+                else:
+                    msgs.append({"role":"user","content":f"The context has been updated with the following information\n\n{new_context}"})
             answer, tokens, msgs = followQuery(query,msgs)
             
         if answer == None:
