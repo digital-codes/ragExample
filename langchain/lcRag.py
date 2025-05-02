@@ -1,5 +1,6 @@
 import sys
 import os
+
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ["LANGSMITH_TRACING"] = "false"
 
@@ -13,10 +14,13 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from langchain_core.tools import tool
 
-PROVIDER = "ollama" # "deepinfra"  # or "openai"
+from typing import List, Optional
+
+PROVIDER = "openai" # "ollama"   or "openai"
+
+DEBUG = False
 
 # maybe check https://python.langchain.com/docs/how_to/qa_chat_history_how_to/
-
 
 
 if PROVIDER == "deepinfra":
@@ -66,32 +70,20 @@ vector_store = FAISS.load_local(
 @tool(response_format="content_and_artifact")
 def retrieve(query: str):
     """Retrieve information related to a query."""
-    retrieved_docs = vector_store.similarity_search(query, k=2)
+    retrieved_docs = vector_store.similarity_search(query, k=5, threshold=0.5)
     serialized = "\n\n".join(
         (f"Source: {doc.metadata}\n" f"Content: {doc.page_content}")
         for doc in retrieved_docs
     )
     return serialized, retrieved_docs
 
+
+
 # Step 1: Generate an AIMessage that may include a tool-call to be sent.
 def query_or_respond(state: MessagesState):
     """Generate tool call for retrieval or respond."""
-    global llm_with_tools
     try:
-        if PROVIDER == "deepinfra" or PROVIDER == "local":
-            #if llm_with_tools is None:
-            #from langchain.agents import create_react_agent
-            from langgraph.prebuilt import create_react_agent
-            from langchain import hub
-            prompt = hub.pull("rlm/rag-prompt")
-            print("Creating new agent with tool")
-            # Create a new agent with the tool
-            # llm_with_tools = create_react_agent(llm, tools=[retrieve],prompt=prompt)
-            llm_with_tools = create_react_agent(llm, [retrieve], checkpointer=memory)
-            print("... done")
-        else:
-            llm_with_tools = llm.bind_tools([retrieve])
-
+        llm_with_tools = llm.bind_tools([retrieve])
         response = llm_with_tools.invoke(state["messages"])
     except Exception as e:
         print(f"Error invoking LLM: {e}")
@@ -101,9 +93,9 @@ def query_or_respond(state: MessagesState):
     return {"messages": [response]}
 
 
+
 # Step 2: Execute the retrieval.
 tools = ToolNode([retrieve])
-
 
 # Step 3: Generate a response using the retrieved content.
 def generate(state: MessagesState):
@@ -113,6 +105,11 @@ def generate(state: MessagesState):
     for message in reversed(state["messages"]):
         if message.type == "tool":
             recent_tool_messages.append(message)
+            # check artifacts
+            if  message.artifact:
+                # print("Artifacts:", message.artifact)
+                doc_ids = [doc.metadata["doc_id"] for doc in message.artifact]
+                print("Docs:", doc_ids)
         else:
             break
     tool_messages = recent_tool_messages[::-1]
@@ -142,11 +139,13 @@ def generate(state: MessagesState):
 
 
 # Build graph
+
+#graph_builder = StateGraph(MessagesState)
 graph_builder = StateGraph(MessagesState)
 
-graph_builder.add_node(query_or_respond)
-graph_builder.add_node(tools)
-graph_builder.add_node(generate)
+graph_builder.add_node("query_or_respond",query_or_respond)
+graph_builder.add_node("tools",tools)
+graph_builder.add_node("generate",generate)
 
 graph_builder.set_entry_point("query_or_respond")
 graph_builder.add_conditional_edges(
@@ -161,10 +160,10 @@ memory = MemorySaver()
 graph = graph_builder.compile(checkpointer=memory)
 
 
-with open("graph1.png","wb") as f:
-    f.write(graph.get_graph().draw_mermaid_png())
-
-print("Graph image written: graph1.png")
+#with open("graph1.png","wb") as f:
+#    f.write(graph.get_graph().draw_mermaid_png())
+#print("Graph image written: graph1.png")
+#print(graph.get_graph())
 
 # Specify an ID for the thread
 config = {"configurable": {"thread_id": "abc123"}}
@@ -177,8 +176,9 @@ for step in graph.stream(
     stream_mode="values",
     config=config,
 ):
-    step["messages"][-1].pretty_print()
-
+    if DEBUG: step["messages"][-1].pretty_print()
+    if step["messages"][-1].type == "ai": # and not message.tool_calls:
+        print(step["messages"][-1].content)
 ######
 
 input_message = "What is main feature of docling?"
@@ -188,10 +188,12 @@ for step in graph.stream(
     stream_mode="values",
     config=config,
 ):
-    step["messages"][-1].pretty_print()
+    if DEBUG: step["messages"][-1].pretty_print()
+    if step["messages"][-1].type == "ai": # and not message.tool_calls:
+        print(step["messages"][-1].content)
 
 
-config["configurable"]["thread_id"] = "abc1234"
+#config["configurable"]["thread_id"] = "abc1234"
 
 ######
 input_message = "Can docling do ocr?"
@@ -201,7 +203,9 @@ for step in graph.stream(
     stream_mode="values",
     config=config,
 ):
-    step["messages"][-1].pretty_print()
+    if DEBUG: step["messages"][-1].pretty_print()
+    if step["messages"][-1].type == "ai": # and not message.tool_calls:
+        print(step["messages"][-1].content)
 
 ########
 
@@ -212,11 +216,25 @@ for step in graph.stream(
     stream_mode="values",
     config=config,
 ):
-    step["messages"][-1].pretty_print()
+    if DEBUG: step["messages"][-1].pretty_print()
+    if step["messages"][-1].type == "ai": # and not message.tool_calls:
+        print(step["messages"][-1].content)
 
 ########
 
-chat_history = graph.get_state(config).values["messages"]
+input_message = "how does it compare to tabulate or tika?"
+
+for step in graph.stream(
+    {"messages": [{"role": "user", "content": input_message}]},
+    stream_mode="values",
+    config=config,
+):
+    if DEBUG: step["messages"][-1].pretty_print()
+    if step["messages"][-1].type == "ai": # and not message.tool_calls:
+        print(step["messages"][-1].content)
+
+########
+
 chat_history = graph.get_state(config).values["messages"]
 with open("chat_history.txt", "w") as f:
     f.writelines([message.content + "\n\n" for message in chat_history])
