@@ -16,7 +16,7 @@ from langchain_core.tools import tool
 
 from typing import List, Optional
 
-PROVIDER = "openai" # "ollama"   or "openai"
+PROVIDER = "openai" # "ollama"   or "openai" "local" # 
 
 DEBUG = False
 
@@ -31,7 +31,7 @@ if PROVIDER == "deepinfra":
     llm_with_tools = None
 elif PROVIDER == "local":
     import localChatModel as LC
-    llm = LC.ChatLocal(parrot_buffer_length=3, model="my_custom_model")
+    llm = LC.ChatLocal(model="granite-3.3-2b-instruct-Q4_K_M") #parrot_buffer_length=3, model="my_custom_model")
     print("Using local model",llm)
     llm_with_tools = None
 elif PROVIDER == "ollama":

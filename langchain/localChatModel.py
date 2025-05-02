@@ -74,7 +74,6 @@ class ChatLocal(BaseChatModel):
     stop: Optional[List[str]] = None
     max_retries: int = 2
     engine: Optional[Any] = None
-    parrot_buffer_length: int = Field(alias="parrot_buffer_length", default=5)
     streamId : Optional[int] = None
 
     def __init__(self, **kwargs: Any):
@@ -229,7 +228,7 @@ class ChatLocal(BaseChatModel):
         
 async def main():
     # Example usage
-    model = ChatLocal(parrot_buffer_length=3, model="granite-3.3-2b-instruct-Q4_K_M")
+    model = ChatLocal(model="granite-3.3-2b-instruct-Q4_K_M")
     result = model.invoke([HumanMessage(content="hello")])
     print(result)  # Should print the echoed response
     
