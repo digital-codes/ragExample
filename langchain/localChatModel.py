@@ -1,6 +1,14 @@
 # https://python.langchain.com/docs/how_to/custom_chat_model/
 from typing import Any, Dict, Iterator, List, Optional
 
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../rag')))
+
+import ragDeployUtils as rag
+
+DEBUG = False
+
 from langchain_core.callbacks import (
     CallbackManagerForLLMRun,
 )
@@ -59,15 +67,21 @@ class ChatLocal(BaseChatModel):
                                  [HumanMessage(content="world")]])
     """
 
-    model_name: str = Field(alias="model")
-    """The name of the model"""
-    parrot_buffer_length: int
-    """The number of characters from the last message of the prompt to be echoed."""
+    model_name: str = Field(alias="model") # default granite-3.3-2b-instruct-Q4_K_M
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
     timeout: Optional[int] = None
     stop: Optional[List[str]] = None
     max_retries: int = 2
+    engine: Optional[Any] = None
+    parrot_buffer_length: int = Field(alias="parrot_buffer_length", default=5)
+    streamId : Optional[int] = None
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+        # Custom object initialization
+        self.engine = rag.Llm(provider="localllama", model=kwargs.get("model", self.model_name))
+        print("Local model created with ", self.model_name)
 
     @measure_execution_time
     def _generate(
@@ -92,14 +106,20 @@ class ChatLocal(BaseChatModel):
                   downstream and understand why generation stopped.
             run_manager: A run manager with callbacks for the LLM.
         """
-        # Replace this with actual logic to generate a response from a list
-        # of messages.
-        last_message = messages[-1]
-        tokens = last_message.content[: self.parrot_buffer_length]
+        
+        # Call the local model engine to generate a response        
+        if DEBUG: print("Generate called with ", messages)
+        response = self.engine.query(messages[-1].content)    
+        content = response[0]
+        tokens = response[1]
+        if DEBUG: print ("Tokens from local model: ", tokens)
+        if DEBUG: print("Content from local model: ", content)
+
         ct_input_tokens = sum(len(message.content) for message in messages)
-        ct_output_tokens = len(tokens)
+        ct_output_tokens = tokens
+
         message = AIMessage(
-            content=tokens,
+            content=content,
             additional_kwargs={},  # Used to add additional payload to the message
             response_metadata={  # Use for response metadata
                 "time_in_seconds": 3,
@@ -141,31 +161,41 @@ class ChatLocal(BaseChatModel):
                   downstream and understand why generation stopped.
             run_manager: A run manager with callbacks for the LLM.
         """
-        last_message = messages[-1]
-        tokens = str(last_message.content[: self.parrot_buffer_length])
-        ct_input_tokens = sum(len(message.content) for message in messages)
+        
+        if DEBUG: print("Stream called with ", messages)
+        while True:
+            response = self.engine.queryStream(messages[-1].content, id=self.streamId)
+            if DEBUG: print("Response from local model: ", response)
+            
+            self.streamId = response[0]
+            content = response[1]
+            stop_detected = response[2]
+            
+            if stop_detected:
+                self.streamId = None
+                break
+            
+            tokens = 1
+            ct_input_tokens = sum(len(message.content) for message in messages)
 
-        for token in tokens:
             usage_metadata = UsageMetadata(
                 {
                     "input_tokens": ct_input_tokens,
-                    "output_tokens": 1,
-                    "total_tokens": ct_input_tokens + 1,
+                    "output_tokens": tokens,
+                    "total_tokens": ct_input_tokens + tokens,
                 }
             )
-            ct_input_tokens = 0
+
             chunk = ChatGenerationChunk(
-                message=AIMessageChunk(content=token, usage_metadata=usage_metadata)
+                message=AIMessageChunk(content=content, usage_metadata=usage_metadata)
             )
 
             if run_manager:
-                # This is optional in newer versions of LangChain
-                # The on_llm_new_token will be called automatically
-                run_manager.on_llm_new_token(token, chunk=chunk)
+                run_manager.on_llm_new_token(content, chunk=chunk)
 
             yield chunk
 
-        # Let's add some other information (e.g., response metadata)
+        # Final chunk with response metadata
         chunk = ChatGenerationChunk(
             message=AIMessageChunk(
                 content="",
@@ -173,9 +203,7 @@ class ChatLocal(BaseChatModel):
             )
         )
         if run_manager:
-            # This is optional in newer versions of LangChain
-            # The on_llm_new_token will be called automatically
-            run_manager.on_llm_new_token(token, chunk=chunk)
+            run_manager.on_llm_new_token("", chunk=chunk)
         yield chunk
 
     @property
@@ -201,21 +229,26 @@ class ChatLocal(BaseChatModel):
         
 async def main():
     # Example usage
-    model = ChatLocal(parrot_buffer_length=3, model="bird-brain-001")
+    model = ChatLocal(parrot_buffer_length=3, model="granite-3.3-2b-instruct-Q4_K_M")
     result = model.invoke([HumanMessage(content="hello")])
     print(result)  # Should print the echoed response
     
-    model.invoke("hello")
-    model.batch(["hello", "goodbye"])
-    
-    for chunk in model.stream("cat"):
-        print(chunk.content, end="|")
+    result = model.invoke([HumanMessage(content="Was ist ein Llama")])
+    print(result)  # Should print the echoed response
 
-    async for chunk in model.astream("cat"):
-        print(chunk.content, end="|")
+    for chunk in model.stream("cat"):
+        print(chunk.content, end="|", flush=True)
+
+
+    result = model.batch(["hello", "goodbye"])
+    print(result)  # Should print the echoed responses
     
-    async for event in model.astream_events("cat", version="v1"):
-        print(event)
+    
+    # async for chunk in model.astream("cat"):
+    #     print(chunk.content, end="|")
+    
+    # async for event in model.astream_events("cat", version="v1"):
+    #     print(event)
                
         
 if __name__ == "__main__":
