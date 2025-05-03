@@ -349,7 +349,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--items', default = 5)      # option that takes a value
     parser.add_argument('-l', '--lang',default = "de")      # option that takes a value
-    parser.add_argument('-d', '--dbProvider',default = "zilliz")      # option that takes a value
+    parser.add_argument('-d', '--dbProvider',default = "localsearch")      # option that takes a value
     parser.add_argument('-c', '--collection',default = "ksk")      # option that takes a value
     parser.add_argument('-P', '--embProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-p', '--llmProvider',default = "deepinfra")      # option that takes a value
