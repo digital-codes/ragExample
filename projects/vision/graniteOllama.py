@@ -9,7 +9,7 @@ with open("chart.png", "rb") as f:
 
 payload = {
     "model": "granite3.2-vision:2b",
-    "prompt": "Extract all data points from this chart and return them as structured JSON.Make sure to handle all rows. Empty columns might be used as separators. Provide compact and complete output. make sure to have a terminating curly bracket at the end of json.",
+    "prompt": "Extract all data points from this chart and return them as structured JSON.Make sure to handle all rows. Empty columns might be used as separators. Extract exactly one y value per x value. Provide compact and complete output. ",
     "images": [image_b64],
 "options": {
         "num_predict": 10240,  # increase this from the default (default is 128)
