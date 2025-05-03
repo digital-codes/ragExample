@@ -3,8 +3,10 @@
 #include <vector>
 #include <cmath>
 
-// g++ -o faissTest faissTest.cpp -I ./faissLib/include/ -L ./faissLib/lib64/ -lfaiss -fopenmp  -lopenblas
-
+// g++ -O3 -o faissTest faissTest.cpp -I ./faissLib/include/ -L ./faissLib/lib64/ -lfaiss -fopenmp  -lopenblas
+// chaeck /opt/faiss for faiss library
+// https://github.com/facebookresearch/faiss/blob/main/INSTALL.md
+//
 // Function to normalize a vector to unit length
 void normalize_vector(float* vec, int dim) {
     float norm = 0.0f;
