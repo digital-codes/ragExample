@@ -50,7 +50,14 @@ print(
     result.document.export_to_markdown()
 )  # output: "## Docling Technical Report[...]"
 
-with open("docling_test_raw.json", "w") as f:
+if source.lower().endswith(".pdf"):
+    outraw = source.replace(".pdf", "_raw.json")
+    outtext = source.replace(".pdf", "_out.json")
+else:
+    outraw = source + "_raw.json"
+    outtext = source + "_out.json"
+
+with open(outraw, "w") as f:
     json.dump(
         result.document.export_to_dict(), f, indent=4
     )  # output: {"title": "Docling Technical Report[...]"}
@@ -63,5 +70,5 @@ doc = {
     "content": result.document.export_to_text(),
 }
 
-with open("docling_test.json", "w") as f:
+with open(outtext, "w") as f:
     json.dump(doc, f)

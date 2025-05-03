@@ -8,8 +8,10 @@ from docling_core.types.doc import ImageRefMode, PictureItem, TableItem, Provena
 
 if len(sys.argv) > 1:
     input_file = sys.argv[1]
+    outdir = input_file.replace(".json", "_extract")
 else:
     input_file = "docling_test_raw.json"
+    outdir = "scratch"
 
 doc =  document.DoclingDocument.load_from_json(input_file)
 # results in document already 
@@ -19,7 +21,7 @@ IMAGE_RESOLUTION_SCALE = 2.0
 
 start_time = time.time()
 
-output_dir = Path("scratch")
+output_dir = Path(outdir)
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # Export tables
