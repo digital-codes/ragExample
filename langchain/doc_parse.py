@@ -46,22 +46,27 @@ converter = DocumentConverter(
 )
 
 result = converter.convert(source)
-print(
-    result.document.export_to_markdown()
-)  # output: "## Docling Technical Report[...]"
+
 
 if source.lower().endswith(".pdf"):
     outraw = source.replace(".pdf", "_raw.json")
     outtext = source.replace(".pdf", "_out.json")
+    outmd = source.replace(".pdf", "_out.md")
 else:
     outraw = source + "_raw.json"
     outtext = source + "_out.json"
+    outmd = source + "_out.md"
+
+with open(outmd, "w") as f:
+    f.write(result.document.export_to_markdown(image_mode="embedded"))
+
 
 with open(outraw, "w") as f:
     json.dump(
         result.document.export_to_dict(), f, indent=4
     )  # output: {"title": "Docling Technical Report[...]"}
 
+# simplified
 doc = {
     "metadata": {
         "title": "Docling Technical Report[...]",
