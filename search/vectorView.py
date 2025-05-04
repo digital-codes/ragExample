@@ -11,7 +11,24 @@ import pandas as pd
 
 # umap on karis titles (28000) results in 312 clusters.
 
+# to get csv from the sqlite do like so:
+# .mode csv 
+# .headers on
+# .output <outpu file>
+# SELECT content FROM snippets WHERE lang = 'de' AND type = 'content' and chunkId is not Null order by refIdx;
+# .output stdout
+# .mode list
+
+
 SEED = 42
+
+
+def load_titles_from_csv(csv_path):
+    df = pd.read_csv(csv_path)
+    print(f"Loaded {len(df)} titles from {csv_path}")
+    df["shortened"] = df["content"].astype(str).apply(lambda x: x[:100] + "..." if len(x) > 100 else x)
+    df["shortened"] = df["shortened"].apply(lambda x: x.replace("\n", " "))
+    return [f"{i} - {row['shortened']}" for i, row in df.iterrows()]
 
 def load_vectors(path, dim):
     """
@@ -48,19 +65,19 @@ def load_vectors(path, dim):
 
     return arr
 
-def reduce_dimensions(vectors, method='umap'):
+def reduce_dimensions(vectors, method='umap', dims =2):
     n_samples = len(vectors)
     scale = 1000 if n_samples > 10000 else 100 if n_samples > 1000 else 10
     print(f"Running {method.upper()} on {n_samples} vectors")
 
     if method == 'umap':
-        reducer = umap.UMAP(n_neighbors=min(50, n_samples // scale), min_dist=0.1, 
+        reducer = umap.UMAP(n_components = dims, n_neighbors=min(50, n_samples // scale), min_dist=0.1, 
                             metric='cosine', n_jobs = 1, random_state=SEED, init="pca" )
     elif method == 'tsne':
         #reducer = TSNE(n_components=2, perplexity=min(15, 2*n_samples // scale), n_iter= max(250,scale), verbose=1)
-        reducer = TSNE(random_state=SEED,n_components=2, perplexity=100, n_iter= 1000, verbose=1)
+        reducer = TSNE(random_state=SEED,n_components=dims, perplexity=100, n_iter= 1000, verbose=1)
     elif method == 'pca':
-        reducer = PCA(random_state=SEED,n_components=2)
+        reducer = PCA(random_state=SEED,n_components=dims)
     else:
         raise ValueError(f"Unsupported method: {method}")
     
@@ -73,7 +90,7 @@ def find_clusters(embedding, min_size=20):
     return labels
 
 
-def plot_embedding(embedding, labels, indices, title="Vector Space Visualization"):
+def plot_embedding(embedding, labels, indices, titles=None, title="Vector Space Visualization"):
     import pandas as pd
 
     df = pd.DataFrame({
@@ -83,9 +100,16 @@ def plot_embedding(embedding, labels, indices, title="Vector Space Visualization
         'index': indices
     })
 
+    if titles is not None:
+        # df["labels"] = titles
+        df["labels"] = [f"{i} - {titles[i]}" for i in indices]
+    else:
+        df["labels"] = [f"{i}" for i in indices]
+
     fig = px.scatter(
         df, x='x', y='y', color=df['cluster'].astype(str),
-        hover_data=['index', 'cluster'],
+        # hover_data=['index', 'cluster'],
+        hover_data=['labels', 'cluster'],
         title=title
     )
     fig.update_layout(xaxis_title='X', yaxis_title='Y')
@@ -119,22 +143,33 @@ def main():
     parser.add_argument("--query_test", action="store_true", help="Run a test query on first 3 vectors")
     parser.add_argument("--min_size", type=int, default=20, help="Minimum cluster size for HDBSCAN")
     parser.add_argument("--output_file", type=str, default="clusters.json", help="Path to save the output JSON file")
+    parser.add_argument("--title_csv", type=str, help="Optional CSV file with 'content' column for labels")
     args = parser.parse_args()
 
     vectors = load_vectors(args.vector_file, args.dim)
     original_indices = np.arange(len(vectors))  # keep original index mapping
+    
+    titles = load_titles_from_csv(args.title_csv) if args.title_csv else None
+    
     if args.method == 'none':
         print("No dimensionality reduction selected. Only dbscan")
         labels = find_clusters(vectors, args.min_size) 
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         print(f"Clusters: {n_clusters}")
     else:
-        embedding = reduce_dimensions(vectors, args.method)
-        print(f"Reduced dimensions: {embedding.shape}")
-        labels = find_clusters(embedding, args.min_size) if args.method == 'umap' else [] # [f"{i:06}" for i in original_indices]
-        n_clusters = len(set(labels)) - (1 if -1 in labels else 0) if len(labels) > 0 else 0
-        print(f"Clusters: {n_clusters}")
-        plot_embedding(embedding, labels if len(labels) > 0 else None, original_indices, title=f"{args.method.upper()} Projection")
+        if args.method == 'umap':
+            embedding = reduce_dimensions(vectors, method=args.method, dims=50)
+            print(f"Reduced dimensions: {embedding.shape}")
+            labels = find_clusters(embedding, min_size = args.min_size)
+            n_clusters = len(set(labels)) - (1 if -1 in labels else 0) if len(labels) > 0 else 0
+            print(f"Clusters: {n_clusters}")
+            # run umap again
+            embedding = reduce_dimensions(embedding, method=args.method, dims=2)
+        else:
+            embedding = reduce_dimensions(vectors, args.method)
+            print(f"Reduced dimensions: {embedding.shape}")
+
+        plot_embedding(embedding, labels if len(labels) > 0 else None, original_indices, titles=titles, title=f"{args.method.upper()} Projection")
 
     df = pd.DataFrame({
         'cluster': labels,
