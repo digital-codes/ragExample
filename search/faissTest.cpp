@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <random>
 
 // g++ -O3 -o faissTest faissTest.cpp -I ./faissLib/include/ -L ./faissLib/lib64/ -lfaiss -fopenmp  -lopenblas
 // chaeck /opt/faiss for faiss library
@@ -61,42 +62,81 @@ void normalize_vector(float* vec, int dim) {
 
 
 int main() {
-    int d = 4;  // Dimensionality
-    int nb = 8; // Number of database vectors
-    int nq = 2; // Number of query vectors
+    int d = 16;  // Dimensionality
+    int nb = 100; // Number of database vectors
+    int nq = 4;   // Number of query vectors
+    int k = 8;   // Number of nearest neighbors
 
-    std::vector<float> database_vectors = {
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-        1.0, 1.0, 0.0, 0.0,
-        1.0, 0.0, 1.0, 0.0,
-        0.0, 1.0, 1.0, 0.0,
-        0.0, 0.0, 1.0, 1.0,
-    };
+    // Generate random database vectors
+    std::vector<float> database_vectors(nb * d);
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<float> dis(0.0, 1.0);
 
-    std::vector<float> query_vectors = {
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-    };
+    for (int i = 0; i < nb * d; i++) {
+        database_vectors[i] = dis(gen);
+    }
 
     // Normalize database vectors
     for (int i = 0; i < nb; i++) {
         normalize_vector(database_vectors.data() + i * d, d);
     }
 
-    // Normalize query vectors
+    // Select query vectors from the database
+    std::vector<float> query_vectors(nq * d);
     for (int i = 0; i < nq; i++) {
-        normalize_vector(query_vectors.data() + i * d, d);
+        int idx = i; // Select the first nq vectors as query vectors
+        std::copy(database_vectors.begin() + idx * d, 
+                  database_vectors.begin() + (idx + 1) * d, 
+                  query_vectors.begin() + i * d);
     }
+
+    // Print the first stored vector
+    std::cout << "First stored vector:" << std::endl;
+    for (int i = 0; i < d; i++) {
+        std::cout << database_vectors[i] << " ";
+    }
+    std::cout << std::endl;
+
+    // Print the first query vector
+    std::cout << "First query vector:" << std::endl;
+    for (int i = 0; i < d; i++) {
+        std::cout << query_vectors[i] << " ";
+    }
+    std::cout << std::endl;
 
     // Initialize the FAISS index
     faiss::IndexFlatIP index(d); // Inner product index
+    //faiss::IndexFlatL2 index(d); // L2 index
     index.add(nb, database_vectors.data());
 
+    // Print the number of vectors in the index
+    std::cout << "Number of vectors in the index: " << index.ntotal << std::endl;
+    // Print the number of dimensions
+    std::cout << "Number of dimensions: " << index.d << std::endl;
+    // Print the vector at index 2 from the FAISS index
+    std::vector<float> vector_at_index(d);
+    index.reconstruct(2, vector_at_index.data());
+
+    std::cout << "Vector at index 2:" << std::endl;
+    for (int i = 0; i < d; i++) {
+        std::cout << vector_at_index[i] << " ";
+    }
+    std::cout << std::endl;
+    // Verify the retrieved vector against the database vector with the same ID
+    bool is_equal = true;
+    for (int i = 0; i < d; i++) {
+        if (std::abs(vector_at_index[i] - database_vectors[2 * d + i]) > 1e-6) {
+            is_equal = false;
+            break;
+        }
+    }
+    if (is_equal) {
+        std::cout << "The databse vector matches the stored vector." << std::endl;
+    } else {
+        std::cout << "The database vector does not match the stored vector." << std::endl;
+    }
     // Search for nearest neighbors
-    int k = 10; // Number of nearest neighbors
     std::vector<faiss::idx_t> indices(k * nq);
     std::vector<float> distances(k * nq);
 
@@ -111,10 +151,10 @@ int main() {
         }
     }
 
-
     // Store the index to a file
     std::string filename = "faiss_index.index";
     store_index(index, filename);
+
     // Load the index from the file
     faiss::Index* loaded_index = load_index(filename);
     if (loaded_index) {
@@ -135,8 +175,6 @@ int main() {
 
         delete loaded_index; // Clean up
     }
-    // Clean up
-
 
     return 0;
 }
