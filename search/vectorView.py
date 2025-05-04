@@ -6,6 +6,13 @@ import plotly.express as px
 import requests
 import argparse
 import os
+import hdbscan
+
+#avoid resource tracker warning at end of process
+import multiprocessing as mp
+mp.set_start_method("fork", force=True)
+
+SEED = 42
 
 def load_vectors(path, dim):
     """
@@ -48,18 +55,46 @@ def reduce_dimensions(vectors, method='umap'):
     print(f"Running {method.upper()} on {n_samples} vectors")
 
     if method == 'umap':
-        reducer = umap.UMAP(n_neighbors=min(15, n_samples // scale), min_dist=0.1, metric='cosine')
+        reducer = umap.UMAP(n_neighbors=min(50, n_samples // scale), min_dist=0.1, metric='cosine', n_jobs = 1, random_state=SEED)
     elif method == 'tsne':
-        reducer = TSNE(n_components=2, perplexity=min(30, n_samples // scale), n_iter= max(250,scale), verbose=1)
+        #reducer = TSNE(n_components=2, perplexity=min(15, 2*n_samples // scale), n_iter= max(250,scale), verbose=1)
+        reducer = TSNE(random_state=SEED,n_components=2, perplexity=100, n_iter= 1000, verbose=1)
     elif method == 'pca':
-        reducer = PCA(n_components=2)
+        reducer = PCA(random_state=SEED,n_components=2)
     else:
         raise ValueError(f"Unsupported method: {method}")
     
     return reducer.fit_transform(vectors)
 
-def plot_embedding(embedding, title="Vector Space Visualization"):
-    fig = px.scatter(x=embedding[:, 0], y=embedding[:, 1], title=title)
+def find_clusters(embedding):
+    print("Finding clusters with HDBSCAN...")
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=20, prediction_data=True,core_dist_n_jobs=1)
+    labels = clusterer.fit_predict(embedding)
+    return labels
+
+
+def plot_embedding(embedding, labels, indices, title="Vector Space Visualization"):
+    import pandas as pd
+
+    df = pd.DataFrame({
+        'x': embedding[:, 0],
+        'y': embedding[:, 1],
+        'cluster': labels,
+        'index': indices
+    })
+
+    fig = px.scatter(
+        df, x='x', y='y', color=df['cluster'].astype(str),
+        hover_data=['index', 'cluster'],
+        title=title
+    )
+    fig.update_layout(xaxis_title='X', yaxis_title='Y')
+    fig.show()
+
+
+def plot_embedding1(embedding, title="Vector Space Visualization"):
+    #fig = px.scatter(x=embedding[:, 0], y=embedding[:, 1], title=title)
+    fig = px.scatter(x=range(embedding.shape[0]), y=embedding[:, 1], title=title)
     fig.update_layout(xaxis_title='X', yaxis_title='Y')
     fig.show()
 
@@ -86,8 +121,13 @@ def main():
     args = parser.parse_args()
 
     vectors = load_vectors(args.vector_file, args.dim)
+    original_indices = np.arange(len(vectors))  # keep original index mapping
     embedding = reduce_dimensions(vectors, args.method)
-    plot_embedding(embedding, title=f"{args.method.upper()} Projection")
+    print(f"Reduced dimensions: {embedding.shape}")
+    labels = find_clusters(embedding) if args.method == 'umap' else [] # [f"{i:06}" for i in original_indices]
+    n_clusters = len(set(labels)) - (1 if -1 in labels else 0) if len(labels) > 0 else 0
+    print(f"Clusters: {n_clusters}")
+    plot_embedding(embedding, labels if len(labels) > 0 else None, original_indices, title=f"{args.method.upper()} Projection")
 
     if args.search_url and args.query_test:
         print("\nTesting search service with first 3 vectors:")
