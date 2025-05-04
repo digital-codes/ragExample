@@ -140,7 +140,8 @@ def main():
         'cluster': labels,
         'index': original_indices
     })
-    df.to_json(args.output_file, orient="records", lines=True, index=False)
+    df = df.sort_values(by='cluster')
+    df.to_json(args.output_file, orient="records", index=False)
 
     if args.search_url and args.query_test:
         print("\nTesting search service with first 3 vectors:")
