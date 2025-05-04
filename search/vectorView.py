@@ -7,10 +7,9 @@ import requests
 import argparse
 import os
 import hdbscan
+import pandas as pd
 
-#avoid resource tracker warning at end of process
-import multiprocessing as mp
-mp.set_start_method("fork", force=True)
+# umap on karis titles (28000) results in 312 clusters.
 
 SEED = 42
 
@@ -55,7 +54,8 @@ def reduce_dimensions(vectors, method='umap'):
     print(f"Running {method.upper()} on {n_samples} vectors")
 
     if method == 'umap':
-        reducer = umap.UMAP(n_neighbors=min(50, n_samples // scale), min_dist=0.1, metric='cosine', n_jobs = 1, random_state=SEED)
+        reducer = umap.UMAP(n_neighbors=min(50, n_samples // scale), min_dist=0.1, 
+                            metric='cosine', n_jobs = 1, random_state=SEED, init="pca" )
     elif method == 'tsne':
         #reducer = TSNE(n_components=2, perplexity=min(15, 2*n_samples // scale), n_iter= max(250,scale), verbose=1)
         reducer = TSNE(random_state=SEED,n_components=2, perplexity=100, n_iter= 1000, verbose=1)
@@ -66,9 +66,9 @@ def reduce_dimensions(vectors, method='umap'):
     
     return reducer.fit_transform(vectors)
 
-def find_clusters(embedding):
+def find_clusters(embedding, min_size=20):
     print("Finding clusters with HDBSCAN...")
-    clusterer = hdbscan.HDBSCAN(min_cluster_size=20, prediction_data=True,core_dist_n_jobs=1)
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=min_size, prediction_data=True,core_dist_n_jobs=1) # error at end of program. ignore
     labels = clusterer.fit_predict(embedding)
     return labels
 
@@ -113,21 +113,34 @@ def query_neighbors(vector, search_url, top_k=5):
 def main():
     parser = argparse.ArgumentParser(description="Visualize vector embeddings with UMAP/t-SNE/PCA.")
     parser.add_argument("vector_file", help="Path to binary file with float32 vectors")
-    parser.add_argument("--method", default="umap", choices=["umap", "tsne", "pca"], help="Dimensionality reduction method")
+    parser.add_argument("--method", default="umap", choices=["umap", "tsne", "pca","none"], help="Dimensionality reduction method")
     parser.add_argument("--dim", type=int, default=1024, help="Dimension")
     parser.add_argument("--search_url", type=str, help="(Optional) HTTP endpoint for vector search")
     parser.add_argument("--query_test", action="store_true", help="Run a test query on first 3 vectors")
-
+    parser.add_argument("--min_size", type=int, default=20, help="Minimum cluster size for HDBSCAN")
+    parser.add_argument("--output_file", type=str, default="clusters.json", help="Path to save the output JSON file")
     args = parser.parse_args()
 
     vectors = load_vectors(args.vector_file, args.dim)
     original_indices = np.arange(len(vectors))  # keep original index mapping
-    embedding = reduce_dimensions(vectors, args.method)
-    print(f"Reduced dimensions: {embedding.shape}")
-    labels = find_clusters(embedding) if args.method == 'umap' else [] # [f"{i:06}" for i in original_indices]
-    n_clusters = len(set(labels)) - (1 if -1 in labels else 0) if len(labels) > 0 else 0
-    print(f"Clusters: {n_clusters}")
-    plot_embedding(embedding, labels if len(labels) > 0 else None, original_indices, title=f"{args.method.upper()} Projection")
+    if args.method == 'none':
+        print("No dimensionality reduction selected. Only dbscan")
+        labels = find_clusters(vectors, args.min_size) 
+        n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+        print(f"Clusters: {n_clusters}")
+    else:
+        embedding = reduce_dimensions(vectors, args.method)
+        print(f"Reduced dimensions: {embedding.shape}")
+        labels = find_clusters(embedding, args.min_size) if args.method == 'umap' else [] # [f"{i:06}" for i in original_indices]
+        n_clusters = len(set(labels)) - (1 if -1 in labels else 0) if len(labels) > 0 else 0
+        print(f"Clusters: {n_clusters}")
+        plot_embedding(embedding, labels if len(labels) > 0 else None, original_indices, title=f"{args.method.upper()} Projection")
+
+    df = pd.DataFrame({
+        'cluster': labels,
+        'index': original_indices
+    })
+    df.to_json(args.output_file, orient="records", lines=True, index=False)
 
     if args.search_url and args.query_test:
         print("\nTesting search service with first 3 vectors:")
