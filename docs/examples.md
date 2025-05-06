@@ -192,3 +192,223 @@ Server: llama.cpp
 }
 
 ```
+
+
+### Tool calling
+
+server must be started with **--jinja** flag
+
+works also for granite. thinking cannot be enabled however with tools? 
+
+**tool is not called**
+
+>   http -j post localhost:8080/v1/chat/completions model=Phi-4-mini-reasoning tools:='[ { "function": { "description": "Returns the criteria to rank colors.", "name": "Elasticsearch-get_latest_version", "strict": false, "parameters": { "type": "object", "required": [], "properties": { "majorVersion": { "description": "Major version to filter by (e.g. 7, 8). Defaults to latest", "type": "integer" } } } }, "type": "function" } ]' controls:='["thinking"]' messages:='[{"role":"control","content":"thinking"},{"role":"user","content":"need best color. if required, use provided tool for color ranging. the following information is available to answer:\nblue is bad\ngreen is best\n"}]' 
+
+
+{
+    "choices": [
+        {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+                "content": "green",
+                "role": "assistant"
+            }
+        }
+    ],
+    "created": 1746546331,
+    "id": "chatcmpl-0jDgohUXIHM665cI3wSG5B6Ws9zBMtpN",
+    "model": "Phi-4-mini-reasoning",
+    "object": "chat.completion",
+    "system_fingerprint": "b0-unknown",
+    "timings": {
+        "predicted_ms": 726.894,
+        "predicted_n": 10,
+        "predicted_per_second": 13.757164043175484,
+        "predicted_per_token_ms": 72.6894,
+        "prompt_ms": 93.871,
+        "prompt_n": 1,
+        "prompt_per_second": 10.65291730140299,
+        "prompt_per_token_ms": 93.871
+    },
+    "usage": {
+        "completion_tokens": 10,
+        "prompt_tokens": 265,
+        "total_tokens": 275
+    }
+}
+
+
+**tool is called**
+>  http -j post localhost:8080/v1/chat/completions model=Phi-4-mini-reasoning tools:='[ { "function": { "description": "Returns the criteria to rank colors.", "name": "Elasticsearch-get_latest_version", "strict": false, "parameters": { "type": "object", "required": [], "properties": { "majorVersion": { "description": "Major version to filter by (e.g. 7, 8). Defaults to latest", "type": "integer" } } } }, "type": "function" } ]' controls:='["thinking"]' messages:='[{"role":"control","content":"thinking"},{"role":"user","content":"need best color. use provided tool for color ranging if required. the following information is available to answer:\noptions are blube,green, white"}]' 
+
+{
+    "choices": [
+        {
+            "finish_reason": "tool_calls",
+            "index": 0,
+            "message": {
+                "content": null,
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "arguments": "{\"majorVersion\":7}",
+                            "name": "Elasticsearch-get_latest_version"
+                        },
+                        "id": "x5WmgwDZ4f8IldnoCgzZCmMhKNgxqtHT",
+                        "type": "function"
+                    }
+                ]
+            }
+        }
+    ],
+    "created": 1746546594,
+    "id": "chatcmpl-BOIiObxB7LiTgsyQopUY9ProFMdEPVyE",
+    "model": "Phi-4-mini-reasoning",
+    "object": "chat.completion",
+    "system_fingerprint": "b0-unknown",
+    "timings": {
+        "predicted_ms": 2591.0950000000003,
+        "predicted_n": 33,
+        "predicted_per_second": 12.735928246552133,
+        "predicted_per_token_ms": 78.51803030303032,
+        "prompt_ms": 314.576,
+        "prompt_n": 10,
+        "prompt_per_second": 31.788820507603884,
+        "prompt_per_token_ms": 31.457600000000003
+    },
+    "usage": {
+        "completion_tokens": 33,
+        "prompt_tokens": 262,
+        "total_tokens": 295
+    }
+}
+
+
+## Granite
+
+
+**tool not called, in this case**
+>  http -j post localhost:8080/v1/chat/completions model=granite-3.3-2b-instruct  tools:='[ { "function": { "description": "Returns ranked list of colors. best first.", "name": "GetColorRank", "strict": false, "parameters": { "type": "object", "required": [], "properties": { "colorSet": { "description": "List of colors to check for. Defaults to [red]", "type": "array" } } } }, "type": "function" } ]'  messages:='[{"role":"control","content":"thinking"},{"role":"user","content":"need best color.use provided documents. use provided tools only if required"},{"role":"user","content":"document_1:blue is bad\ndocument_2:green is nice" }]' 
+
+{
+    "choices": [
+        {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+                "content": "green is a nice color according to the provided documents. It is recommended as the best choice.",
+                "role": "assistant"
+            }
+        }
+    ],
+    "created": 1746551949,
+    "id": "chatcmpl-yvt3mzE0ebVWjUqnMakAmYRbwh6sGV8E",
+    "model": "granite-3.3-2b-instruct",
+    "object": "chat.completion",
+    "system_fingerprint": "b0-unknown",
+    "timings": {
+        "predicted_ms": 1261.588,
+        "predicted_n": 25,
+        "predicted_per_second": 19.816295018659023,
+        "predicted_per_token_ms": 50.463519999999995,
+        "prompt_ms": 573.801,
+        "prompt_n": 28,
+        "prompt_per_second": 48.79740537224578,
+        "prompt_per_token_ms": 20.49289285714286
+    },
+    "usage": {
+        "completion_tokens": 25,
+        "prompt_tokens": 196,
+        "total_tokens": 221
+    }
+}
+
+**tool called**
+
+>  http -j post localhost:8080/v1/chat/completions model=granite-3.3-2b-instruct  tools:='[ { "function": { "description": "Returns ranked list of colors. best first.", "name": "GetColorRank", "strict": false, "parameters": { "type": "object", "required": [], "properties": { "colorSet": { "description": "List of colors to check for. Defaults to [red]", "type": "array" } } } }, "type": "function" } ]'  messages:='[{"role":"control","content":"thinking"},{"role":"user","content":"need best color.use provided documents. use provided tools only if required"},{"role":"user","content":"document_1:blue is bad\ndocument_2:green is not good" }]' 
+
+{
+    "choices": [
+        {
+            "finish_reason": "tool_calls",
+            "index": 0,
+            "message": {
+                "content": null,
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "arguments": "{\"colorSet\":[\"blue\",\"green\"]}",
+                            "name": "GetColorRank"
+                        },
+                        "id": "IuKcHkSjMEdcoXsLwl7FIAArBGSdGccB",
+                        "type": "function"
+                    }
+                ]
+            }
+        }
+    ],
+    "created": 1746551966,
+    "id": "chatcmpl-mw1cmZrN30RGFsq2T2MFGNmxB8BTvmEq",
+    "model": "granite-3.3-2b-instruct",
+    "object": "chat.completion",
+    "system_fingerprint": "b0-unknown",
+    "timings": {
+        "predicted_ms": 1501.561,
+        "predicted_n": 29,
+        "predicted_per_second": 19.313234693762027,
+        "predicted_per_token_ms": 51.77796551724138,
+        "prompt_ms": 190.787,
+        "prompt_n": 7,
+        "prompt_per_second": 36.69013087893829,
+        "prompt_per_token_ms": 27.255285714285716
+    },
+    "usage": {
+        "completion_tokens": 29,
+        "prompt_tokens": 197,
+        "total_tokens": 226
+    }
+}
+
+**tool result fed back to llm**
+
+*Make sure to return a precise description of the result and repeat the initial query*
+
+>  http -j post localhost:8080/v1/chat/completions model=granite-3.3-2b-instruct  messages:='[{  "role": "tool",  "content": "{\"ranked list of colors. first is best, last is worst\": [\"green\", \"blue\"]}",  "tool_call_id": "IuKcHkSjMEdcoXsLwl7FIAArBGSdGccB"},{"role":"user","content":"need best color"}]'
+
+{
+    "choices": [
+        {
+            "finish_reason": "stop",
+            "index": 0,
+            "message": {
+                "content": "Based on the tool's response, the best color according to the tool's analysis is \"green\".",
+                "role": "assistant"
+            }
+        }
+    ],
+    "created": 1746553036,
+    "id": "chatcmpl-9igwUqK6HqrhbEQui9VSKMLhiGywAKQ1",
+    "model": "granite-3.3-2b-instruct",
+    "object": "chat.completion",
+    "system_fingerprint": "b0-unknown",
+    "timings": {
+        "predicted_ms": 1102.575,
+        "predicted_n": 21,
+        "predicted_per_second": 19.046323379361947,
+        "predicted_per_token_ms": 52.50357142857143,
+        "prompt_ms": 248.372,
+        "prompt_n": 10,
+        "prompt_per_second": 40.262187364115114,
+        "prompt_per_token_ms": 24.837200000000003
+    },
+    "usage": {
+        "completion_tokens": 21,
+        "prompt_tokens": 135,
+        "total_tokens": 156
+    }
+}
+
+
