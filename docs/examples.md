@@ -2,19 +2,18 @@
 
 ## Phi-4-mini-reasoning
 
-### Desctiption
+### Description
 
 Primary Use Cases
 
 Phi-4-mini-reasoning is designed for multi-step, logic-intensive mathematical problem-solving tasks under memory/compute constrained environments and latency bound scenarios. Some of the use cases include formal proof generation, symbolic computation, advanced word problems, and a wide range of mathematical reasoning scenarios. These models excel at maintaining context across steps, applying structured logic, and delivering accurate, reliable solutions in domains that require deep analytical thinking.
 
+**llamacpp running with normal template (no --ninja)**
+
+ * 1 Simple question, little thinking
+
 > http -j post localhost:8080/v1/chat/completions model=Phi-4-mini-reasoning   messages:='[{"role":"control","content":"thinking"},{"role":"user","content":"need best color. use the following information to answer:\nblue is bad\ngreen is best\n"}]' 
     HTTP/1.1 200 OK
-    Access-Control-Allow-Origin: 
-    Content-Length: 2085
-    Content-Type: application/json; charset=utf-8
-    Keep-Alive: timeout=5, max=100
-    Server: llama.cpp
 
 ``` 
 {
@@ -52,13 +51,9 @@ Phi-4-mini-reasoning is designed for multi-step, logic-intensive mathematical pr
 
 ```
 
- http -j post localhost:8080/v1/chat/completions model=Phi-4-mini-reasoning  messages:='[{"role":"control","content":"thinking,citations"},{"role":"user","content":"need best color. use only information from following context"},{"role":"user","content":"blue is bad\nred id good\nyellow rules"}]'
-HTTP/1.1 200 OK
-Access-Control-Allow-Origin: 
-Content-Length: 10561
-Content-Type: application/json; charset=utf-8
-Keep-Alive: timeout=5, max=100
-Server: llama.cpp
+ * 2 Complicated question, much thinking
+
+>  http -j post localhost:8080/v1/chat/completions model=Phi-4-mini-reasoning  messages:='[{"role":"control","content":"thinking,citations"},{"role":"user","content":"need best color. use only information from following context"},{"role":"user","content":"blue is bad\nred id good\nyellow rules"}]'
 
 {
     "choices": [
@@ -98,12 +93,6 @@ Server: llama.cpp
 ## Granite-3.3-2b-instruct
 
 >    http -j post localhost:8080/v1/chat/completions model=granite-3.3-2b-instruct  messages:='[{"role":"control","content":"thinking"},{"role":"user","content":"need best color. use the following information to answer:\nblue is bad\ngreen is best\n"}]' 
-    HTTP/1.1 200 OK
-    Access-Control-Allow-Origin: 
-    Content-Length: 695
-    Content-Type: application/json; charset=utf-8
-    Keep-Alive: timeout=5, max=100
-    Server: llama.cpp
 
 *Faster* but no thinking. Hower, on ollama the model should think
 
