@@ -9,7 +9,7 @@ import requests
 import private_remote as pr
 import ragConfig as cfg
 
-provider = "localllama"
+provider = "localllama" # "localllama"
 
 if provider == "openAi":
     url = cfg.openAi["lngUrl"]
@@ -22,7 +22,7 @@ elif provider == "localllama":
 elif provider == "deepInfra":
     url = cfg.deepInfra["lngUrl"]
     key = pr.deepInfra["apiKey"]
-    model = cfg.deepInfra["lngMdl_3"]
+    model = cfg.deepInfra["lngMdl"]
 else:
     raise ("Invalid provider")
 
@@ -40,13 +40,13 @@ tools = [
         "function": {
             "description": "Returns ranked list of colors. best first.",
             "name": "GetColorRank",
-            "strict": "False",
+            "strict": False,
             "parameters": {
                 "type": "object",
                 "required": [],
                 "properties": {
                     "colorSet": {
-                        "description": "List of colors to check for. Defaults to [red]",
+                        "description": "List of colors to check for",
                         "type": "array",
                     }
                 },
@@ -115,6 +115,7 @@ elif finish == "tool_calls":
     if response.status_code == 200:
         data = response.json()
         print(data)
+        print("Text:\n", data["choices"][0]["message"]["content"].strip())
     else:
         print(response.status_code, response.content)
         raise Exception(f"Error: {response.status_code} - {response.content}")
