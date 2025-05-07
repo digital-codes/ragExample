@@ -41,8 +41,8 @@ elif provider == "huggingface":
     model = cfg.huggingface["lngMdl"][0]
     key = pr.huggingface["apiKey"]
 elif provider == "ollama":
-    url = "http://localhost:11434/api"
-    model = "granite-3.3:2b"
+    url = "http://localhost:11434/api/chat"
+    model = "mistral:latest"
     key = "1234"
 else:
     raise ("Invalid provider")
