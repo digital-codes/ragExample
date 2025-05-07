@@ -1,6 +1,8 @@
 # from https://platform.openai.com/docs/guides/function-calling?api-mode=responses
 import os
 import sys
+import argparse
+
 
 # add path to rag modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "./rag")))
@@ -17,8 +19,8 @@ import ragConfig as cfg
 
 # deepinfra models 0 (default) and 2 are good.
 
-providers = ["localllama", "deepInfra", "openAi"]
-provider = providers[1]
+providers = ["localllama", "deepInfra", "openAi","huggingface"]
+provider = providers[3]
 
 if provider == "openAi":
     url = cfg.openAi["lngUrl"].split("/chat")[0]
@@ -43,7 +45,7 @@ print("Using provider:", provider, "model:", model)
 
 client = openai.OpenAI(base_url=url, api_key=key)
 
-temperature = 0.2
+temperature = 0.1
 
 
 # Example dummy function hard coded to return the same weather
@@ -64,7 +66,7 @@ def get_current_weather(location):
 def GetColorRank(colorSet):
     """ "Returns ranked list of colors. best first."""
     print("Calling getColorRank client side.")
-    return json.dumps({"colorSet": colorSet[::-1]})
+    return json.dumps({"Ranked colors, best first, worst last": colorSet[::-1]})
 
 
 # here is the definition of our function
@@ -94,29 +96,33 @@ documents1 = []
 
 tools2 = [
     {
+        "type": "function",
         "function": {
             "description": "Returns ranked list of colors. best first.",
             "name": "GetColorRank",
             "strict": False,
             "parameters": {
                 "type": "object",
-                "required": ["colorSet"],
                 "properties": {
                     "colorSet": {
-                        "description": "List of colors to check for",
                         "type": "array",
+                        "description": "List of colors to check for",
                     }
                 },
+                "required": ["colorSet"],
             },
-        },
-        "type": "function",
+        }
     }
 ]
 
 
-query2 = "need best color"
+#query2 = "need best color. Use only data from documents. Use tools only if required not to verify. Justify tool usage."
+#query2 = "need best color. Use only data from documents. Use tool functions only if required, not to verify."
+query2 = "need best color. Use only data from documents. Use tools only if documents if required."
+#query2 = "need best color. Use only data from documents. High penalty to use tools, must be justified."
 
-documents2 = ["document_1:\nblue is bad", "document_2:\ngreen is not good"]
+documents2 = ["document_1:\nblue is bad", "document_2:\ngreen is not good","document_3:\nyellow is favorable"]
+#documents2 = ["document_1:\nblue is bad", "document_2:\ngreen is not good"]
 
 tools = tools2
 query = query2
@@ -126,11 +132,10 @@ documents = documents2
 # here is the user request
 messages = [
     {"role": "user", "content": query},
-    {"role": "user", "content": "\n".join(documents)},
+    {"role": "user", "content": "\n".join(["documents:","\n".join(documents)])},
 ]
 
-if provider == "localllama":
-    messages.append({"role": "user", "content": "Use tool only if required"})
+#messages.append({"role": "user", "content": "Use tools only if required"})
 
 print("First messages:", messages)
 # let's send the request and print the response
@@ -141,7 +146,22 @@ response = client.chat.completions.create(
     tool_choice="auto",
 )
 print(response)
+
+stop = response.choices[0].finish_reason
+print("Finish reason:", stop)   
+
+if stop != "tool_calls": 
+    print("Response:", response.choices[0].message.content)
+    if provider != "huggingface":
+        sys.exit()
+    # huggingface stops with tool call
+    if len(response.choices[0].message.tool_calls) == 0: 
+        print("No tool calls from huggingface either")
+        sys.exit()  
+    
 tool_calls = response.choices[0].message.tool_calls
+print("Tool calls:",tool_calls)
+
 for tool_call in tool_calls:
     print(tool_call.model_dump())
 
@@ -184,102 +204,4 @@ print(second_response)
 
 print(second_response.choices[0].message.content)
 
-sys.exit()
 
-#######################################
-
-
-size = 200
-
-hdrs = {
-    "Content-Type": "application/json",
-    "Authorization": f"Bearer {key}",
-}
-
-tools = [
-    {
-        "function": {
-            "description": "Returns ranked list of colors. best first.",
-            "name": "GetColorRank",
-            "strict": False,
-            "parameters": {
-                "type": "object",
-                "required": [],
-                "properties": {
-                    "colorSet": {
-                        "description": "List of colors to check for",
-                        "type": "array",
-                    }
-                },
-            },
-        },
-        "type": "function",
-    }
-]
-
-
-query = "need best color"
-
-documents = ["document_1:\nblue is bad", "document_2:\ngreen is not good"]
-
-
-richQuery = f"""
-You are a helpful assistant with access to the following tools. 
-When a tool is required to answer the user's query, respond only with <|tool_call|> followed by a JSON list of tools used. 
-If a tool does not exist in the provided list of tools, notify the user that you do not have the ability to fulfill the request.
-The question is:
-{query}
-Documents:
-{"\n".join(documents)}
-"""
-
-
-rdata = {
-    "tools": tools,
-    "controls": ["tinking"],
-    "model": model,
-    "temperature": temperature,
-    "messages": [{"role": "user", "content": richQuery}],
-}
-
-
-response = requests.post(url, headers=hdrs, json=rdata)
-if response.status_code == 200:
-    data = response.json()
-    print(data)
-
-else:
-    print(response.status_code, response.content)
-    raise Exception(f"Error: {response.status_code} - {response.content}")
-
-finish = data["choices"][0]["finish_reason"]
-
-if finish == "stop":
-    text = data["choices"][0]["message"]["content"].strip()
-    tokens = data["usage"]["total_tokens"]
-    print("Text:\n", text)
-    print("Tokens:\n", tokens)
-elif finish == "tool_calls":
-    print("function call\n")
-    print(data["choices"][0]["message"]["tool_calls"])
-    id = data["choices"][0]["message"]["tool_calls"][0]["id"]
-    # assume dummy function call
-    rdata["messages"] = [
-        {
-            "role": "tool",
-            "content": "ranked list of colors. first is best, last is worst: green, blue",
-            "tool_call_id": id,
-        },
-        {"role": "user", "content": query},
-    ]
-    response = requests.post(url, headers=hdrs, json=rdata)
-    if response.status_code == 200:
-        data = response.json()
-        print(data)
-        print("Text:\n", data["choices"][0]["message"]["content"].strip())
-    else:
-        print(response.status_code, response.content)
-        raise Exception(f"Error: {response.status_code} - {response.content}")
-
-else:
-    raise Exception("Error: stopped due to:", data["choices"][0]["finish_reason"])
