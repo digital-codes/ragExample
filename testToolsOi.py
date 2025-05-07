@@ -21,8 +21,8 @@ import ragConfig as cfg
 
 # deepinfra models 0 (default) and 2 are good.
 
-providers = ["localllama", "deepInfra", "openAi","huggingface"]
-provider = providers[0]
+providers = ["localllama", "deepInfra", "openAi","huggingface","ollama"]
+provider = providers[4]
 
 if provider == "openAi":
     url = cfg.openAi["lngUrl"].split("/chat")[0]
@@ -40,6 +40,10 @@ elif provider == "huggingface":
     url = cfg.huggingface["lngUrl"][0].split("/chat")[0]
     model = cfg.huggingface["lngMdl"][0]
     key = pr.huggingface["apiKey"]
+elif provider == "ollama":
+    url = "http://localhost:11434/api"
+    model = "granite-3.3:2b"
+    key = "1234"
 else:
     raise ("Invalid provider")
 

@@ -9,7 +9,7 @@ import requests
 import private_remote as pr
 import ragConfig as cfg
 
-provider = "localllama" # "localllama"
+provider = "ollama" # "localllama" # "localllama"
 
 if provider == "openAi":
     url = cfg.openAi["lngUrl"]
@@ -23,6 +23,10 @@ elif provider == "deepInfra":
     url = cfg.deepInfra["lngUrl"]
     key = pr.deepInfra["apiKey"]
     model = cfg.deepInfra["lngMdl"]
+elif provider == "ollama":
+    url = "http://localhost:11434/api/chat"
+    model = "mistral:latest"
+    key = "1234"
 else:
     raise ("Invalid provider")
 
@@ -69,7 +73,7 @@ If a tool does not exist in the provided list of tools, notify the user that you
 The question is:
 {query}
 Documents:
-{"\n".join(documents)}
+{" ".join(documents)}
 """
 
 
@@ -84,6 +88,7 @@ rdata = {
 
 response = requests.post(url, headers=hdrs, json=rdata)
 if response.status_code == 200:
+    print(response.content)
     data = response.json()
     print(data)
 
