@@ -13,14 +13,16 @@ import json
 import private_remote as pr
 import ragConfig as cfg
 
-# openai mode works for openai and deepinfra
+# openai mode works for openai and deepinfra and localllama 
 # localllama requires explicit hint to use tool.
 # not for huggingface
+
+# openai paramter type array not working, only simple types (string)
 
 # deepinfra models 0 (default) and 2 are good.
 
 providers = ["localllama", "deepInfra", "openAi","huggingface"]
-provider = providers[3]
+provider = providers[0]
 
 if provider == "openAi":
     url = cfg.openAi["lngUrl"].split("/chat")[0]
@@ -45,7 +47,7 @@ print("Using provider:", provider, "model:", model)
 
 client = openai.OpenAI(base_url=url, api_key=key)
 
-temperature = 0.1
+temperature = 0.2
 
 
 # Example dummy function hard coded to return the same weather
@@ -66,7 +68,7 @@ def get_current_weather(location):
 def GetColorRank(colorSet):
     """ "Returns ranked list of colors. best first."""
     print("Calling getColorRank client side.")
-    return json.dumps({"Ranked colors, best first, worst last": colorSet[::-1]})
+    return json.dumps({"Best color is": colorSet[-1]})
 
 
 # here is the definition of our function
@@ -106,7 +108,7 @@ tools2 = [
                 "properties": {
                     "colorSet": {
                         "type": "array",
-                        "description": "List of colors to check for",
+                        "description": "List of colors to check for. Returns best",
                     }
                 },
                 "required": ["colorSet"],
@@ -118,10 +120,10 @@ tools2 = [
 
 #query2 = "need best color. Use only data from documents. Use tools only if required not to verify. Justify tool usage."
 #query2 = "need best color. Use only data from documents. Use tool functions only if required, not to verify."
-query2 = "need best color. Use only data from documents. Use tools only if documents if required."
+query2 = "need best color. Use only data from documents. Use tools if required."
 #query2 = "need best color. Use only data from documents. High penalty to use tools, must be justified."
 
-documents2 = ["document_1:\nblue is bad", "document_2:\ngreen is not good","document_3:\nyellow is favorable"]
+documents2 = ["document_1:\nblue is bad", "document_2:\ngreen is not good","document_3:\nyellow is unclear"]
 #documents2 = ["document_1:\nblue is bad", "document_2:\ngreen is not good"]
 
 tools = tools2
