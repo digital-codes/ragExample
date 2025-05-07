@@ -401,3 +401,27 @@ works also for granite. thinking cannot be enabled however with tools?
 }
 
 
+# OpenAi Python
+
+## OpenAi
+
+Example: https://platform.openai.com/docs/guides/function-calling?api-mode=responses&example=search-knowledge-base
+
+
+## DeepInfra
+
+Example: https://deepinfra.com/docs/advanced/function_calling
+
+Documented for:
+Llama-3.1-70b
+Mixtral 8x7b
+
+should work on Llama-3.3-70B-Instruct-Turbo and deepseek  well
+
+
+# Huggingface
+
+Example: https://huggingface.co/docs/hugs/en/guides/function-calling
+
+
+
