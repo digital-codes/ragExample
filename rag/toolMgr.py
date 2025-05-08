@@ -1,9 +1,10 @@
 import json
 from typing import Any, Callable, Dict, List, Optional
 
+
 class ToolChatSession:
     """
-    A lightweight session manager for OpenAI chat with automatic tool handling.
+    A lightweight session manager for OpenAI chat with automatic tool handling, with optional logging.
     """
     def __init__(
         self,
@@ -11,18 +12,22 @@ class ToolChatSession:
         model: str,
         tools: List[Dict[str, Any]],
         function_map: Dict[str, Callable[..., str]],
-        provider: str = "openai"
+        provider: str = "openai",
+        logging: bool = False
     ):
         self.client = client
         self.model = model
         self.tools = tools
         self.function_map = function_map
         self.provider = provider
+        self.logging = logging
         self.messages: List[Dict[str, Any]] = []
+        self.total_tokens: int = 0
 
     def reset(self) -> None:
-        """Clear the conversation history."""
+        """Clear the conversation history and reset token count."""
         self.messages = []
+        self.total_tokens = 0
 
     def add_user_message(self, content: str) -> None:
         self.messages.append({"role": "user", "content": content})
@@ -53,10 +58,13 @@ class ToolChatSession:
         Run a full chat session: send the query, handle any tool calls, and return the final answer.
 
         Exits immediately if the query is 'quit' or 'exit'.
+        If logging is enabled, prints iteration details and total tokens.
         """
-        # Allow user to exit
         if query.strip().lower() in {"quit", "exit"}:
-            return "Session terminated by user."
+            print("Session terminated by user.")
+            if self.logging:
+                print(f"Total tokens used: {self.total_tokens}")
+            return "EXIT"
 
         # Reset state
         self.reset()
@@ -67,20 +75,48 @@ class ToolChatSession:
             docs_content = "documents:\n" + "\n".join(documents)
             self.add_user_message(docs_content)
 
+        iteration = 0
         while True:
+            iteration += 1
             response = self._model_call()
+            # Track and accumulate tokens
+            tokens = getattr(response.usage, 'total_tokens', 0)
+            self.total_tokens += tokens
+
+            if self.logging:
+                print(f"--- Iteration {iteration} ---")
+                print("Messages sent to model:")
+                for m in self.messages:
+                    print(f"  {m['role']}: {m.get('content', '')}")
+                print(f"Model returned {tokens} tokens (total so far: {self.total_tokens})")
+
             choice = response.choices[0]
             finish_reason = choice.finish_reason
 
             # If no tools were called, return the content
             if finish_reason != "tool_calls":
-                return choice.message.content
+                if self.logging:
+                    print("Final response content:")
+                    print(choice.message.content)
+                query = input("Query: ")
+                if query.strip().lower() in {"quit", "exit"}:
+                    print("Session terminated by user.")
+                    if self.logging:
+                        print(f"Total tokens used: {self.total_tokens}")
+                    return "EXIT"
+                else:
+                    self.add_user_message(query)
+                    continue
+                #return choice.message.content
 
             # Otherwise, handle each tool call
             tool_calls = choice.message.tool_calls
             for call in tool_calls:
                 fname = call.function.name
                 args = json.loads(call.function.arguments)
+
+                if self.logging:
+                    print(f"Tool call: {fname} with args {args}")
 
                 if fname not in self.function_map:
                     raise ValueError(f"No handler for function {fname}")
@@ -105,7 +141,7 @@ if __name__ == "__main__":
     # client = OpenAI()
 
     # Define the tool list
-    tools2 = [
+    tools = [
         {
             "type": "function",
             "function": {
@@ -128,11 +164,12 @@ if __name__ == "__main__":
 
     # Map function names to their callables
     def get_color_rank(colorSet: str) -> str:
-        # Implement your logic here
-        options = [c.strip() for c in colorSet.split(",")]
-        # For example, just pick the first
-        best = options[0] if options else None
-        return best or ""
+        """ "Returns best color from options."""
+        print("Calling getColorRank client side.")
+        options = colorSet.split(",")
+        #return json.dumps({"Best": options[-1]})
+        return ":".join(["Best",options[-1]])
+
 
     function_map = {
         "GetColorRank": get_color_rank,
@@ -142,12 +179,19 @@ if __name__ == "__main__":
     session = ToolChatSession(
         client=client,
         model=model,
-        tools=tools2,
+        tools=tools,
         function_map=function_map,
+        logging = True
     )
 
     # Run a query
-    query2 = "Which color is best: red, green, or blue?"
-    answer = session.run(query2)
-    print("Assistant:", answer)
+    query = "need best color. Use only data from documents and tools if required."
+
+    documents = ["document_1:\nblue is bad", "document_2:\ngreen is not good","document_3:\nyellow is unclear"]
+    while True:
+        answer = session.run(query, documents=documents)
+        print("Assistant:", answer)
+        if answer == "EXIT":
+            break
+        query = input("Query: ")
 
