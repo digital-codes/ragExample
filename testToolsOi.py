@@ -35,7 +35,7 @@ elif provider == "deepInfra":
     key = pr.deepInfra["apiKey"]
 elif provider == "localllama":
     url = cfg.localllama["lngUrl"].split("/chat")[0]
-    model = "Phi-4-mini-instruct" # "granite-3.3-2b-instruct"  # cfg.localllama["lngMdl"]
+    model = "granite-3.3-2b-instruct"  # "Phi-4-mini-instruct" # 
     key = "1234"
 elif provider == "huggingface":
     url = cfg.huggingface["lngUrl"][0].split("/chat")[0]
@@ -126,7 +126,7 @@ tools2 = [
 
 #query2 = "need best color. Use only data from documents. Use tools only if required not to verify. Justify tool usage."
 #query2 = "need best color. Use only data from documents. Use tool functions only if required, not to verify."
-query2 = "need best color. Use only data from documents. Use tools if required."
+query2 = "need best color. Use only data from documents. Use tools only if required."
 #query2 = "need best color. Use only data from documents. High penalty to use tools, must be justified."
 
 documents2 = ["document_1:\nblue is bad", "document_2:\ngreen is not good","document_3:\nyellow is unclear"]
