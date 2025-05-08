@@ -1,7 +1,6 @@
 # from https://platform.openai.com/docs/guides/function-calling?api-mode=responses
 import os
 import sys
-import argparse
 
 
 # add path to rag modules
@@ -13,16 +12,18 @@ import json
 import private_remote as pr
 import ragConfig as cfg
 
-# openai mode works for openai and deepinfra and localllama 
-# localllama requires explicit hint to use tool.
-# not for huggingface
+# openai mode works for openai, deepinfra and localllama 
+# make sure to not use "array" type for parameters (works only with llamacpp and deepinfra, openai fails)
+# localllama requires explicit hint to use tool. Doesn't hurt to set for all
+# huggingface currently out of credits ....
 
-# openai paramter type array not working, only simple types (string)
-
-# deepinfra models 0 (default) and 2 are good.
 
 providers = ["localllama", "deepInfra", "openAi","huggingface","ollama"]
-provider = providers[4]
+
+if len(sys.argv) > 1:
+    provider = sys.argv[1]
+else:
+    provider = providers[0]
 
 if provider == "openAi":
     url = cfg.openAi["lngUrl"].split("/chat")[0]
@@ -34,7 +35,7 @@ elif provider == "deepInfra":
     key = pr.deepInfra["apiKey"]
 elif provider == "localllama":
     url = cfg.localllama["lngUrl"].split("/chat")[0]
-    model = "granite-3.3-2b-instruct"  # cfg.localllama["lngMdl"]
+    model = "Phi-4-mini-instruct" # "granite-3.3-2b-instruct"  # cfg.localllama["lngMdl"]
     key = "1234"
 elif provider == "huggingface":
     url = cfg.huggingface["lngUrl"][0].split("/chat")[0]
@@ -70,9 +71,10 @@ def get_current_weather(location):
 
 
 def GetColorRank(colorSet):
-    """ "Returns ranked list of colors. best first."""
+    """ "Returns best color from options."""
     print("Calling getColorRank client side.")
-    return json.dumps({"Best color is": colorSet[-1]})
+    options = colorSet.split(",")
+    return json.dumps({"Best": options[-1]})
 
 
 # here is the definition of our function
@@ -104,15 +106,15 @@ tools2 = [
     {
         "type": "function",
         "function": {
-            "description": "Returns ranked list of colors. best first.",
+            "description": "Returns best color from list of options.",
             "name": "GetColorRank",
             "strict": False,
             "parameters": {
                 "type": "object",
                 "properties": {
                     "colorSet": {
-                        "type": "array",
-                        "description": "List of colors to check for. Returns best",
+                        "type": "string",
+                        "description": "Comma separated list of colors to check for. Returns best",
                     }
                 },
                 "required": ["colorSet"],
@@ -154,6 +156,12 @@ response = client.chat.completions.create(
 print(response)
 
 stop = response.choices[0].finish_reason
+tokens = response.usage.total_tokens
+print("Tokens:", tokens)
+if "timings" in dict(response).keys():
+    time = response.timings.get("predicted_ms", 0)
+    print("Time:", time)
+
 print("Finish reason:", stop)   
 
 if stop != "tool_calls": 
@@ -207,7 +215,12 @@ second_response = client.chat.completions.create(
 )
 print("Second response:")
 print(second_response)
+tokens = second_response.usage.total_tokens
+print("Tokens:", tokens)
+if "timings" in dict(second_response).keys():
+    time = second_response.timings.get("predicted_ms", 0)
+    print("Time:", time)
 
 print(second_response.choices[0].message.content)
 
-
+    
