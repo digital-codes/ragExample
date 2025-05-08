@@ -287,8 +287,20 @@ def retrieve_context(query):
                 ]
             )
             if DEBUG: print([(t.id,t.itemId) for t in fulltexts])
+            summaries = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
+                filters=[
+                    config["sql"]["sq"].Snippet.lang == config["lang"],
+                    config["sql"]["sq"].Snippet.itemId.in_(itemIds),
+                        config["sql"]["sq"].Snippet.type == "summary",
+                        config["sql"]["sq"].Snippet.chunkId == None
+                ]
+            )
+            if DEBUG: print([(t.id,t.itemId) for t in summaries])
             # itemids may be larger than items!
-            results = [(files[i], titles[i].content, "" if len(fulltexts) < (i + 1) else fulltexts[i].content) for i in range(len(items))]
+            if config["brief"]:
+                results = [(files[i], titles[i].content, "" if len(summaries) < (i + 1) else summaries[i].content) for i in range(len(items))]
+            else:
+                results = [(files[i], titles[i].content, "" if len(fulltexts) < (i + 1) else fulltexts[i].content) for i in range(len(items))]
             if DEBUG: print("Results:",results)
         else:
             results = []
@@ -355,8 +367,9 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--llmProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-m', '--llmModel',default = None)      # option that takes a value
     parser.add_argument('-s', '--sqlite',default = None)      # option that takes a value
-    parser.add_argument('-S', '--stream',default = False)      # option that takes a value
-    parser.add_argument('-t', '--think',default = None)      # option that takes a value
+    parser.add_argument('-S', '--stream',action='store_true', help='Enable streaming')
+    parser.add_argument('-t', '--think',action='store_true', help='Enable think output')
+    parser.add_argument('-b', '--brief', action='store_true', help='Use summaries instead of fulltext')
     
     args = parser.parse_args()
     print(args.items, args.lang, args.collection) 
@@ -370,7 +383,8 @@ if __name__ == "__main__":
     config["dbProvider"] = args.dbProvider
     config["dbSqlite"] = args.sqlite
     config["stream"] = args.stream
-    config["think"] = True if args.think else False
+    config["think"] = args.think
+    config["brief"] = args.brief
     if DEBUG: print(config)
     initialize()
 
