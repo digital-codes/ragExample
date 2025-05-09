@@ -58,6 +58,7 @@ import os
 import subprocess
 import atexit
 import signal
+import sys
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #SUPERVISOR_CONF = os.path.join(BASE_DIR, "..", "sv", 'supervisord.conf')
@@ -311,7 +312,7 @@ def retrieve_context(query):
         if DEBUG: print(searchResult)
         files = [f["file"] for f in searchResult["data"]]
         if DEBUG: print(files)
-        results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= .55]
+        results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= config["threshold"]]
     elif config["dbProvider"] == "localsearch":
         tsearchResult = config["dbSearch"]["title"].searchItem(searchVector, limit=config["dbItems"]*2)
         csearchResult = config["dbSearch"]["chunk"].searchItem(searchVector, limit=config["dbItems"]*5)
@@ -347,6 +348,7 @@ def retrieve_context(query):
                 unique_ids.add(item["id"])
                 filtered_search_result.append(item)
         searchResult = filtered_search_result
+        searchResult = [r for r in searchResult if r["similarity"] >= config["threshold"]]
         if DEBUG: print(searchResult)
         print("Filtered search result:",searchResult)
         #print("Filtered search result:",searchResult)
@@ -464,6 +466,7 @@ if __name__ == "__main__":
     parser.add_argument('-S', '--stream',action='store_true', help='Enable streaming')
     parser.add_argument('-t', '--think',action='store_true', help='Enable think output')
     parser.add_argument('-b', '--brief', action='store_true', help='Use summaries instead of fulltext')
+    parser.add_argument('-T', '--threshold', default = .55, help='Search threshold')
     
     args = parser.parse_args()
     print(args.items, args.lang, args.collection) 
@@ -479,6 +482,7 @@ if __name__ == "__main__":
     config["stream"] = args.stream
     config["think"] = args.think
     config["brief"] = args.brief
+    config["threshold"] = args.threshold
     if DEBUG: print(config)
     
     signal.signal(signal.SIGINT, sigint_handler)
@@ -529,17 +533,24 @@ if __name__ == "__main__":
             # add assistant answer to msgs
             msgs.append({"role":"assistant","content":answer})
             # compare last answer to query
-            v1 = config["embedder"].encode(query)["data"][0]["embedding"]
-            v2 = config["embedder"].encode(answer)["data"][0]["embedding"]
-            match = config["embedder"].compare(v1,v2)
-            if match < .5:
-                print("We should run the retriever tool with the new query")
-                new_context, files = retrieve_context(query)
-                if DEBUG: print(new_context)
-                if new_context == "":
-                    print("No relevant documents found")
-                else:
-                    msgs.append({"role":"user","content":f"The context has been updated with the following information\n\n{new_context}"})
+            print("Comparing last answer to query")
+            try:
+                v1 = config["embedder"].encode(query)["data"][0]["embedding"]
+                v2 = config["embedder"].encode(answer)["data"][0]["embedding"]
+                match = config["embedder"].compare(v1,v2)
+                if match < .5:
+                    print("We should run the retriever tool with the new query")
+                    new_context, files = retrieve_context(query)
+                    if DEBUG: print(new_context)
+                    if new_context == "":
+                        print("No relevant documents found")
+                    else:
+                        msgs.append({"role":"user","content":f"The context has been updated with the following information\n\n{new_context}"})
+            except Exception as e:
+                print("Error comparing embeddings:",e)
+                print("Answer:",answer)
+                print("Query:",query)
+                pass                
             answer, tokens, msgs = followQuery(query,msgs)
             
         if answer == None:

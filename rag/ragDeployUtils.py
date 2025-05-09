@@ -173,15 +173,17 @@ class Embedder:
         import numpy as np
         a = np.array(first)
         b = np.array(second)
+        try:
+            # Normalize both vectors
+            a_norm = a / np.linalg.norm(a)
+            b_norm = b / np.linalg.norm(b)
 
-        # Normalize both vectors
-        a_norm = a / np.linalg.norm(a)
-        b_norm = b / np.linalg.norm(b)
-
-        # Compute cosine similarity
-        cosine_similarity = np.dot(a_norm, b_norm)
-        return cosine_similarity
-
+            # Compute cosine similarity
+            cosine_similarity = np.dot(a_norm, b_norm)
+            return cosine_similarity
+        except Exception as e:
+            print(f"Error in compare: {e}")
+            return 0.0
 
 
 class Llm:
