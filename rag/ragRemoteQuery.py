@@ -49,8 +49,83 @@ import ragTextUtils as textUtils
 import ragDeployUtils as deployUtils
 from ragInstrumentation import measure_execution_time, log_query
 
-import requests
 import time
+
+
+############################
+# supervisord stuff
+import os
+import subprocess
+import atexit
+import signal
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+#SUPERVISOR_CONF = os.path.join(BASE_DIR, "..", "sv", 'supervisord.conf')
+SEARCH_CONF = os.path.join(BASE_DIR, "..", "sv", 'search.conf')
+EMBED_CONF = os.path.join(BASE_DIR, "..", "sv", 'embed.conf')
+LLM_CONF = os.path.join(BASE_DIR, "..", "sv", 'llm.conf')
+SUPERVISORCTL = 'supervisorctl'
+SUPERVISORD = 'supervisord'
+
+supervised = [] # list of running supervised processes
+sv_options = {"search":SEARCH_CONF,"embed":EMBED_CONF,"llm":LLM_CONF}
+
+def wait_for_service(name: str = None):
+    """
+    Wait for a specific service to be ready.
+    If no name is provided, exception
+    """
+    if name == None:
+        raise ValueError("Name missing")
+    config = sv_options.get(name,None)
+    if config == None:
+        raise ValueError("Service {name} not found")
+    
+    while True:
+        try:
+            output = subprocess.check_output(
+                [SUPERVISORCTL, '-c', config, 'status'],
+                stderr=subprocess.STDOUT
+            ).decode()
+            lines = output.strip().splitlines()
+            not_ready = [line for line in lines if 'RUNNING' not in line]
+            if not not_ready:
+                print(f"Service {name} is RUNNING.")
+                break
+            print("Waiting for service {name}:")
+            print("\n".join(not_ready))
+            time.sleep(2)
+        except subprocess.CalledProcessError as e:
+            print("Waiting for supervisor socket to become ready...")
+            time.sleep(1)
+
+def start_supervisord(name: str = None):
+    if name == None:
+        raise ValueError("Name missing")
+    config = sv_options.get(name,None)
+    if config == None:
+        raise ValueError("Service {name} not found")
+
+    print("Starting supervisord...")
+    subprocess.Popen([SUPERVISORD, '-c', config])
+
+def shutdown_supervisord():
+    for name in supervised:
+        config = sv_options.get(name,None)
+        if config == None:
+            raise ValueError("Service {name} not found")
+
+        print(f"Shutting down supervisord {name}, {config}...")
+        try:
+            subprocess.run([SUPERVISORCTL, '-c', config, 'shutdown'],
+                        check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            print("Error shutting down supervisor:", e)
+        time.sleep(1)
+
+
+############################
+
 
 DEBUG = False
 
@@ -71,6 +146,13 @@ config = {
     "dbProvider":None,
     "search": []
 }
+
+def sigint_handler(signum, frame):
+    print("\\nCaught Ctrl-C (SIGINT)")
+    shutdown_supervisord()
+    sys.exit(0)
+
+
 
 def initialize():
     """
@@ -398,6 +480,28 @@ if __name__ == "__main__":
     config["think"] = args.think
     config["brief"] = args.brief
     if DEBUG: print(config)
+    
+    signal.signal(signal.SIGINT, sigint_handler)
+
+    # start services, if required
+    if config["dbProvider"] == "localsearch":
+        supervised.append("search")
+        start_supervisord("search")
+        wait_for_service("search")
+    
+    if config["embProvider"] == "localllama":
+        supervised.append("embed")
+        start_supervisord("embed")
+        wait_for_service("embed")
+
+    if config["llmProvider"] == "localllama":
+        supervised.append("llm")
+        start_supervisord("llm")
+        wait_for_service("llm")
+
+    atexit.register(shutdown_supervisord)
+
+    #####################    
     initialize()
 
     msgHistory = []
