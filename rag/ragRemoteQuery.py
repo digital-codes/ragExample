@@ -80,7 +80,7 @@ def wait_for_service(name: str = None):
         raise ValueError("Name missing")
     config = sv_options.get(name,None)
     if config == None:
-        raise ValueError("Service {name} not found")
+        raise ValueError(f"Service {name} not found")
     
     while True:
         try:
@@ -93,7 +93,7 @@ def wait_for_service(name: str = None):
             if not not_ready:
                 print(f"Service {name} is RUNNING.")
                 break
-            print("Waiting for service {name}:")
+            print(f"Waiting for service {name}:")
             print("\n".join(not_ready))
             time.sleep(2)
         except subprocess.CalledProcessError as e:
@@ -105,16 +105,16 @@ def start_supervisord(name: str = None):
         raise ValueError("Name missing")
     config = sv_options.get(name,None)
     if config == None:
-        raise ValueError("Service {name} not found")
+        raise ValueError(f"Service {name} not found")
 
-    print("Starting supervisord...")
+    print(f"Starting supervisord {name}, {config}...")
     subprocess.Popen([SUPERVISORD, '-c', config])
 
 def shutdown_supervisord():
     for name in supervised:
         config = sv_options.get(name,None)
         if config == None:
-            raise ValueError("Service {name} not found")
+            raise ValueError(f"Service {name} not found")
 
         print(f"Shutting down supervisord {name}, {config}...")
         try:
