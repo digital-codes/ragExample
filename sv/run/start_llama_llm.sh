@@ -1,15 +1,12 @@
 #!/bin/bash
 hostname=$(hostname)
-if [[ "$hostname" == "lap3" ]]; then
-    export LD_LIBRARY_PATH="/opt/llama/lib:$LD_LIBRARY_PATH"
-    export PATH="/opt/llama/bin:$PATH"
-elif [[ "$hostname" == "tux3" ]]; then
+if [[ "$hostname" == "tux3" ]]; then
     source /opt/oneapi/setvars.sh
     export LD_LIBRARY_PATH="/opt/llama/gpu/lib64:$LD_LIBRARY_PATH"
     export PATH="/opt/llama/gpu/bin:$PATH"
 else
-    echo "Unknown hostname. Exiting."
-    exit 1
+    export LD_LIBRARY_PATH="/opt/llama/lib:$LD_LIBRARY_PATH"
+    export PATH="/opt/llama/bin:$PATH"
 fi
 
 if [ -z "$RAG_LLM_MODEL" ]; then
