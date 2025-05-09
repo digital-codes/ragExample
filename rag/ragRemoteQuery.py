@@ -229,7 +229,7 @@ def retrieve_context(query):
         if DEBUG: print(searchResult)
         files = [f["file"] for f in searchResult["data"]]
         if DEBUG: print(files)
-        results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= .35]
+        results = [(f["itemId"], f["title"], f["text"]) for f in searchResult["data"] if f["distance"] >= .55]
     elif config["dbProvider"] == "localsearch":
         tsearchResult = config["dbSearch"]["title"].searchItem(searchVector, limit=config["dbItems"]*2)
         csearchResult = config["dbSearch"]["chunk"].searchItem(searchVector, limit=config["dbItems"]*5)
@@ -239,9 +239,19 @@ def retrieve_context(query):
         # wrong. csearch returns chunk indices, tsearch returns title indices
         # replace vector indices with item ids
         titleItems = config["sql"]["db"].search(config["sql"]["sq"].Item, filters=[config["sql"]["sq"].Item.itemIdx.in_([idx["id"] for idx in tsearchResult])])
+        # !important!
+        # Ensure the order of titleItems matches the order of tsearchResult
+        tsearchResult_ids = [idx["id"] for idx in tsearchResult]
+        titleItems = sorted(titleItems, key=lambda item: tsearchResult_ids.index(item.itemIdx))
+        #
         for i,item in enumerate(titleItems):
             tsearchResult[i]["id"] = item.id                
         chunks = config["sql"]["db"].search(config["sql"]["sq"].Chunk, filters=[config["sql"]["sq"].Chunk.chunkIdx.in_([idx["id"] for idx in csearchResult])])
+        # !important!
+        # Ensure the order of chunks matches the order of csearchResult
+        csearchResult_ids = [idx["id"] for idx in csearchResult]
+        chunks = sorted(chunks, key=lambda chunk: csearchResult_ids.index(chunk.chunkIdx))
+        #
         for i,chunk in enumerate(chunks):
             csearchResult[i]["id"] = chunk.itemId
         if DEBUG: print(titleItems,chunks)
@@ -256,6 +266,7 @@ def retrieve_context(query):
                 filtered_search_result.append(item)
         searchResult = filtered_search_result
         if DEBUG: print(searchResult)
+        print("Filtered search result:",searchResult)
         #print("Filtered search result:",searchResult)
         if len(searchResult) > 0:
             #indices = [f["id"] for f in searchResult["data"]]
@@ -278,6 +289,7 @@ def retrieve_context(query):
                 ]
             )
             if DEBUG: print([t.id for t in titles])
+            print([(t.id,t.itemId,t.content) for t in titles])
             fulltexts = config["sql"]["db"].search(config["sql"]["sq"].Snippet,
                 filters=[
                     config["sql"]["sq"].Snippet.lang == config["lang"],
