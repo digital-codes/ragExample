@@ -11,4 +11,9 @@ else
     echo "Unknown hostname. Exiting."
     exit 1
 fi
-exec llama-server --jinja -m /opt/llama/models/granite-3.3-2b-instruct-Q4_K_M.gguf --port 8080 -c 20000 --no-webui
+
+if [ -z "$RAG_LLM_MODEL" ]; then
+    echo "Error: RAG_LLM_MODEL environment variable is not set."
+    exit 1
+fi
+exec llama-server --jinja -m $RAG_LLM_MODEL --port 8080 -c 20000 --no-webui

@@ -482,10 +482,12 @@ if __name__ == "__main__":
     if DEBUG: print(config)
     
     signal.signal(signal.SIGINT, sigint_handler)
+    atexit.register(shutdown_supervisord)
 
     # start services, if required
     if config["dbProvider"] == "localsearch":
         supervised.append("search")
+        os.environ['RAG_SEARCH_ARGS'] = ' '.join(["1024","9001","/opt/llama/data/vectors/ksk_1024_*de.vec"])
         start_supervisord("search")
         wait_for_service("search")
     
@@ -496,10 +498,16 @@ if __name__ == "__main__":
 
     if config["llmProvider"] == "localllama":
         supervised.append("llm")
+        if args.llmModel == None:
+            args.llmModel = "granite-3.3-2b-instruct" # default
+        model_files = [f for f in os.listdir('/opt/llama/models') if f.startswith(args.llmModel)]
+        if not model_files:
+            raise FileNotFoundError(f"No model file starting with {config['llmModel']} found in /opt/llama/models")
+        model_file = os.path.join('/opt/llama/models', model_files[0])
+        os.environ['RAG_LLM_MODEL'] = model_file # '/opt/llama/models/granite-3.3-2b-instruct-Q4_K_M.gguf'
         start_supervisord("llm")
         wait_for_service("llm")
 
-    atexit.register(shutdown_supervisord)
 
     #####################    
     initialize()
