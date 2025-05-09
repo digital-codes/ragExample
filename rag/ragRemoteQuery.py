@@ -539,13 +539,19 @@ if __name__ == "__main__":
                 v2 = config["embedder"].encode(answer)["data"][0]["embedding"]
                 match = config["embedder"].compare(v1,v2)
                 if match < .5:
-                    print("We should run the retriever tool with the new query")
-                    new_context, files = retrieve_context(query)
-                    if DEBUG: print(new_context)
-                    if new_context == "":
-                        print("No relevant documents found")
+                    print("We might run the retriever tool with the new query")
+                    user_choice = input("[C]ontinue with old context or [U]pdate with new data?").strip().lower()
+                    if user_choice.startswith("u"):
+                        new_context, files = retrieve_context(query)
+                        if DEBUG: print(new_context)
+                        print("Context has been updated with new data.")
+                        if new_context == "":
+                            print("No relevant documents found")
+                        else:
+                            msgs.append({"role":"user","content":f"The context has been updated with the following information\n\n{new_context}"})
                     else:
-                        msgs.append({"role":"user","content":f"The context has been updated with the following information\n\n{new_context}"})
+                        print("Continuing with the old context.")
+
             except Exception as e:
                 print("Error comparing embeddings:",e)
                 print("Answer:",answer)
