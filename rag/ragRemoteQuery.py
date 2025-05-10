@@ -529,41 +529,32 @@ if __name__ == "__main__":
                 continue
             answer, tokens, msgs = initQuery(context, query)
             followUp = True
+            queryChain = query # init for updates
         else:
             # add assistant answer to msgs
             msgs.append({"role":"assistant","content":answer})
-            # compare last answer to query
-            print("Comparing last answer to query")
-            try:
-                v1 = config["embedder"].encode(query)["data"][0]["embedding"]
-                v2 = config["embedder"].encode(answer)["data"][0]["embedding"]
-                match = config["embedder"].compare(v1,v2)
-                if match < .5:
-                    print("We might run the retriever tool with the new query")
-                    user_choice = input("[C]ontinue with old context or [U]pdate with new data?").strip().lower()
-                    if user_choice.startswith("u"):
-                        new_context, files = retrieve_context(query)
-                        if DEBUG: print(new_context)
-                        print("Context has been updated with new data.")
-                        if new_context == "":
-                            print("No relevant documents found")
-                        else:
-                            msgs.append({"role":"user","content":f"The context has been updated with the following information\n\n{new_context}"})
-                    else:
-                        print("Continuing with the old context.")
+            queryChain = " ".join([queryChain, query])
+            if query.startswith("U:"):
+                query = query[2:]
+                new_context, files = retrieve_context(queryChain)
+                if DEBUG: print(new_context)
+                print("Context has been updated with new data.")
+                if new_context == "":
+                    print("No relevant documents found")
+                else:
+                    msgs.append({"role":"user","content":f"The context has been updated with the following information\n\n{new_context}"})
 
-            except Exception as e:
-                print("Error comparing embeddings:",e)
-                print("Answer:",answer)
-                print("Query:",query)
-                pass                
             answer, tokens, msgs = followQuery(query,msgs)
             
         if answer == None:
             print("No answer found")    
         print("Answer:", answer,tokens, files)
         if DEBUG: print("History","no result" if msgs == None else msgs)
-        query = input("\nEnter your query: ")
+        query = input("\nEnter your query (With optional N: or U:): ")
+        if query.startswith("N:"):
+            query = query[2:]
+            followUp = False
+            msgHistory = []
 
     
     
