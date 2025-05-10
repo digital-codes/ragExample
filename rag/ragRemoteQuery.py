@@ -334,10 +334,18 @@ def retrieve_context(query):
         # Ensure the order of chunks matches the order of csearchResult
         csearchResult_ids = [idx["id"] for idx in csearchResult]
         chunks = sorted(chunks, key=lambda chunk: csearchResult_ids.index(chunk.chunkIdx))
+        print("Chunks ids:",[c.id for c in chunks])
         #
         for i,chunk in enumerate(chunks):
             csearchResult[i]["id"] = chunk.itemId
         if DEBUG: print(titleItems,chunks)
+        chunkIds = [c["id"] for c in csearchResult]
+        chunkTexts = [(s.chunkId,s.itemId,s.content) for s in config["sql"]["db"].search(config["sql"]["sq"].Snippet, 
+                        filters=[config["sql"]["sq"].Snippet.chunkId.in_(chunkIds),
+                        config["sql"]["sq"].Snippet.lang == config["lang"],
+                        config["sql"]["sq"].Snippet.type == "content"
+                    ])]
+        print("Chunks:",chunkIds, chunkTexts)
         # TODO: find chunk and title item id in separate lists and merge them
         searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
         # Remove duplicates by keeping only the first occurrence of each id
