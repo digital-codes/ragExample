@@ -319,6 +319,11 @@ def retrieve_context(query):
         tsearchResult = tsearchResult["data"] if tsearchResult != None else []
         csearchResult = csearchResult["data"] if csearchResult != None else []
         if DEBUG: print(tsearchResult,csearchResult)
+        # limit by threshold
+        tsearchResult = [r for r in tsearchResult if r["similarity"] >= config["threshold"]]
+        csearchResult = [r for r in csearchResult if r["similarity"] >= config["threshold"]]
+        if DEBUG: print("Thresholded:",tsearchResult,csearchResult)
+        # !! id in search results is vector INDEX !!
         # wrong. csearch returns chunk indices, tsearch returns title indices
         # replace vector indices with item ids
         titleItems = config["sql"]["db"].search(config["sql"]["sq"].Item, filters=[config["sql"]["sq"].Item.itemIdx.in_([idx["id"] for idx in tsearchResult])])
@@ -326,26 +331,28 @@ def retrieve_context(query):
         # Ensure the order of titleItems matches the order of tsearchResult
         tsearchResult_ids = [idx["id"] for idx in tsearchResult]
         titleItems = sorted(titleItems, key=lambda item: tsearchResult_ids.index(item.itemIdx))
+        if DEBUG: print(titleItems)
         #
         for i,item in enumerate(titleItems):
             tsearchResult[i]["id"] = item.id                
+        # chunks
         chunks = config["sql"]["db"].search(config["sql"]["sq"].Chunk, filters=[config["sql"]["sq"].Chunk.chunkIdx.in_([idx["id"] for idx in csearchResult])])
         # !important!
         # Ensure the order of chunks matches the order of csearchResult
         csearchResult_ids = [idx["id"] for idx in csearchResult]
         chunks = sorted(chunks, key=lambda chunk: csearchResult_ids.index(chunk.chunkIdx))
-        print("Chunks ids:",[c.id for c in chunks])
-        #
-        for i,chunk in enumerate(chunks):
-            csearchResult[i]["id"] = chunk.itemId
-        if DEBUG: print(titleItems,chunks)
-        chunkIds = [c["id"] for c in csearchResult]
+        # collect chunk ids
+        chunkIds = [c.id for c in chunks]
         chunkTexts = [(s.chunkId,s.itemId,s.content) for s in config["sql"]["db"].search(config["sql"]["sq"].Snippet, 
                         filters=[config["sql"]["sq"].Snippet.chunkId.in_(chunkIds),
                         config["sql"]["sq"].Snippet.lang == config["lang"],
                         config["sql"]["sq"].Snippet.type == "content"
                     ])]
-        print("Chunks:",chunkIds, chunkTexts)
+        # !important!
+        # Ensure the order of chunks matches the order of csearchResult
+        chunkTexts = sorted(chunkTexts, key=lambda ct: chunkIds.index(ct[0]))
+        if DEBUG: print("Chunks:",chunkIds, chunkTexts)
+
         # TODO: find chunk and title item id in separate lists and merge them
         searchResult = sorted(csearchResult + tsearchResult, key=lambda obj: obj["similarity"], reverse=True)
         # Remove duplicates by keeping only the first occurrence of each id
@@ -356,7 +363,8 @@ def retrieve_context(query):
                 unique_ids.add(item["id"])
                 filtered_search_result.append(item)
         searchResult = filtered_search_result
-        searchResult = [r for r in searchResult if r["similarity"] >= config["threshold"]]
+        # already threshold
+        # searchResult = [r for r in searchResult if r["similarity"] >= config["threshold"]]
         if DEBUG: print(searchResult)
         print("Filtered search result:",searchResult)
         #print("Filtered search result:",searchResult)
@@ -499,7 +507,18 @@ if __name__ == "__main__":
     # start services, if required
     if config["dbProvider"] == "localsearch":
         supervised.append("search")
-        os.environ['RAG_SEARCH_ARGS'] = ' '.join(["1024","9001","/opt/llama/data/vectors/ksk_1024_*de.vec"])
+        if args.collection == None:
+            raise ValueError("Collection name missing")
+        if os.path.sep in args.collection:
+            collection = args.collection
+            config["dbCollection"] = os.path.basename(args.collection)
+        else:
+            collection = "/opt/llama/data/vectors/" + args.collection
+        collection += f"_*{args.lang}.vec"
+        #os.environ['RAG_SEARCH_ARGS'] = ' '.join(["1024","9001","/opt/llama/data/vectors/ksk_1024_*de.vec"])
+        os.environ['RAG_SEARCH_ARGS'] = ' '.join(["1024","9001",collection])
+        print("collection:",collection,config["dbCollection"])
+        print(os.environ['RAG_SEARCH_ARGS'])
         start_supervisord("search")
         wait_for_service("search")
     
