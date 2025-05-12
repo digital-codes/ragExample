@@ -210,6 +210,8 @@ def initialize():
         
     # llm
     config["llm"] = deployUtils.Llm(lang=config["lang"],provider=config["llmProvider"],model=config["llmModel"])
+    if config["llmUrl"] != None:
+        config["llm"].url = config["llmUrl"]
 
 
 def checkDb():
@@ -483,6 +485,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--think',action='store_true', help='Enable think output')
     parser.add_argument('-b', '--brief', action='store_true', help='Use summaries instead of fulltext')
     parser.add_argument('-T', '--threshold', default = .55, help='Search threshold')
+    parser.add_argument('-u', '--llmUrl',default = None, help="LLM url")      # option that takes a value
     
     args = parser.parse_args()
     print(args.items, args.lang, args.collection) 
@@ -499,6 +502,7 @@ if __name__ == "__main__":
     config["think"] = args.think
     config["brief"] = args.brief
     config["threshold"] = args.threshold
+    config["url"] = args.url
     if DEBUG: print(config)
     
     signal.signal(signal.SIGINT, sigint_handler)
