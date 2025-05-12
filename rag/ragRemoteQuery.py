@@ -502,7 +502,7 @@ if __name__ == "__main__":
     config["think"] = args.think
     config["brief"] = args.brief
     config["threshold"] = args.threshold
-    config["url"] = args.url
+    config["llmUrl"] = args.llmUrl
     if DEBUG: print(config)
     
     signal.signal(signal.SIGINT, sigint_handler)
