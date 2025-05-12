@@ -76,6 +76,20 @@ localllama = {
     "lngMdl_1" : "LLaMmlein_1B_chat_selected"
 }
 
+# ollama uses openai compatible embeddings and chat completions with potentially special url
+# can be used remote with ssh tunnel like 
+# ssh -L 8085:localhost:11434 <user>@host
+# basically ollama can be used as openai, optionally with customized urls nad models
+ollama = {
+    "embUrl":"http://localhost:8085/v1/embeddings",
+    "embMdl":"bge-m3:latest",
+    "embSize":1024,
+    "embToks": 8192,
+    "lngUrl":"http://localhost:8080/v1/chat/completions",
+    "lngMdl": "granite3.3:2b"
+}
+
+
 # local vector search server
 localsearch = {
     "url":"http://localhost:9001/"
