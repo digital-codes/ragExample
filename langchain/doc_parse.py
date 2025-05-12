@@ -47,15 +47,16 @@ converter = DocumentConverter(
 
 result = converter.convert(source)
 
-
-if source.lower().endswith(".pdf"):
-    outraw = source.replace(".pdf", "_raw.json")
-    outtext = source.replace(".pdf", "_out.json")
-    outmd = source.replace(".pdf", "_out.md")
+# filename from source
+source_f = source.split("/")[-1]
+if source_f.lower().endswith(".pdf"):
+    outraw = source_f.replace(".pdf", "_raw.json")
+    outtext = source_f.replace(".pdf", "_out.json")
+    outmd = source_f.replace(".pdf", "_out.md")
 else:
-    outraw = source + "_raw.json"
-    outtext = source + "_out.json"
-    outmd = source + "_out.md"
+    outraw = source_f + "_raw.json"
+    outtext = source_f + "_out.json"
+    outmd = source_f + "_out.md"
 
 with open(outmd, "w") as f:
     f.write(result.document.export_to_markdown(image_mode="embedded"))
