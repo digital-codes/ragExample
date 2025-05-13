@@ -1,0 +1,1 @@
+llama-mtmd-cli -m /mnt_ai/models/vision/granite-vision-3.2-2b-f16.gguf --mmproj /mnt_ai/models/vision/granite-mmproj-model-f16.gguf -c 16384 --temp 0 
