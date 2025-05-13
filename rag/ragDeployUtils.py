@@ -423,8 +423,9 @@ class Llm:
         }
         richQuery = f"""
         You are an intelligent assistant.
-        Summarize the following {self.lang} text into {self.lang}:
+        Summarize the following {self.lang} text into {self.lang}:\n
         {text}
+        \nCorrect individual misspellings from OCR on the fly\n
         Respond in {self.lang} language. Limit the summary to {size} {self.lang} words.
         """
         data = {
