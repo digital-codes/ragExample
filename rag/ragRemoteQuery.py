@@ -60,6 +60,9 @@ import atexit
 import signal
 import sys
 
+from urllib.parse import urlparse, urlunparse
+
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 #SUPERVISOR_CONF = os.path.join(BASE_DIR, "..", "sv", 'supervisord.conf')
 SEARCH_CONF = os.path.join(BASE_DIR, "..", "sv", 'search.conf')
@@ -212,7 +215,11 @@ def initialize():
     config["llm"] = deployUtils.Llm(lang=config["lang"],provider=config["llmProvider"],model=config["llmModel"])
     if config["llmUrl"] != None:
         config["llm"].url = config["llmUrl"]
-
+    if config["llmPort"] != None:
+        if config["llm"].url:
+            parsed_url = urlparse(config["llm"].url)
+            new_netloc = f"{parsed_url.hostname}:{config['llmPort']}"
+            config["llm"].url = urlunparse(parsed_url._replace(netloc=new_netloc))
 
 def checkDb():
     """
@@ -480,6 +487,7 @@ if __name__ == "__main__":
     parser.add_argument('-P', '--embProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-p', '--llmProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-m', '--llmModel',default = None)      # option that takes a value
+    parser.add_argument('-r', '--llmPort',default = None, help="Optional LLM port number")      # option that takes a value
     parser.add_argument('-s', '--sqlite',default = None)      # option that takes a value
     parser.add_argument('-S', '--stream',action='store_true', help='Enable streaming')
     parser.add_argument('-t', '--think',action='store_true', help='Enable think output')
@@ -503,6 +511,7 @@ if __name__ == "__main__":
     config["brief"] = args.brief
     config["threshold"] = args.threshold
     config["llmUrl"] = args.llmUrl
+    config["llmPort"] = args.llmPort
     if DEBUG: print(config)
     
     signal.signal(signal.SIGINT, sigint_handler)
@@ -539,7 +548,11 @@ if __name__ == "__main__":
         if not model_files:
             raise FileNotFoundError(f"No model file starting with {config['llmModel']} found in /opt/llama/models")
         model_file = os.path.join('/opt/llama/models', model_files[0])
+        print("model:",model_file)
         os.environ['RAG_LLM_MODEL'] = model_file # '/opt/llama/models/granite-3.3-2b-instruct-Q4_K_M.gguf'
+        if args.llmPort != None:
+            os.environ['RAG_LLM_PORT'] = str(args.llmPort)
+            print("llmPort:",args.llmPort)
         start_supervisord("llm")
         wait_for_service("llm")
 

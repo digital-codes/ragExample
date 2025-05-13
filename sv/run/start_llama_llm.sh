@@ -13,4 +13,7 @@ if [ -z "$RAG_LLM_MODEL" ]; then
     echo "Error: RAG_LLM_MODEL environment variable is not set."
     exit 1
 fi
-exec llama-server --jinja -m $RAG_LLM_MODEL --port 8080 -c 20000 --no-webui
+
+port=${RAG_LLM_PORT:-8080}
+
+exec llama-server --jinja -m "$RAG_LLM_MODEL" --port "$port" -c 20000 --no-webui
