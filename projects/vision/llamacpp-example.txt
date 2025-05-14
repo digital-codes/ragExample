@@ -1,1 +1,33 @@
 llama-mtmd-cli -m /mnt_ai/models/vision/granite-vision-3.2-2b-f16.gguf --mmproj /mnt_ai/models/vision/granite-mmproj-model-f16.gguf -c 16384 --temp 0 
+
+
+temp 0 results in greedy encoding with lots of repetitions. don't used. stay with default .2
+optionally add --presence-penalty 0.8 --frequency-penalty 0.8
+
+settings:
+--presence-penalty 0.8 --frequency-penalty 0.8
+prompt:
+extract data from bar stacked bar chart. present in tabular form. limit float precision to 1 decimal.
+
+llava-phi-3-mini:
+
+
+| Year | Davenport Planmäßigen Gemeinschaft | Davenport Schädensbedingung |
+| --- | --- | --- |
+| 2015 | 13098.6746293877551412968353404761902.859375 | 1.0E+04 |
+| 2016 | 12983.8467686559137374829612934540319.02859375 | 1.0E+04 |
+| 2017 | 12983.8467686559137374829612934540319.02859375 | 1.0E+04 |
+| 2018 | 12983.8467686559137374829612934540319.02859375 | 1.0E+04 |
+| 2019 | 12983.8467686559137374829612934540319.02859375 | 1.0E+04 |
+| 2020 | 12983.8467686559137374829612934540319.02859375 | 1.0E+04 |
+| 2021 | 12983.8467686559137374829612934540319.02859375 | 1.0E+04 |
+| 2022 | 12983.8467686559137374829612934540319.02859375 | 1.0E+04 |
+
+
+granite-visison:
+doesn't extract useful data
+
+textual description of granite is more precise. llava should be ok as well, is faster.
+
+
+

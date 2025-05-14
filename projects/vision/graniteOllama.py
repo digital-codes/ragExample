@@ -48,7 +48,7 @@ payload = {
             "content": [
                 {"type": "image_url", "image_url": {"url": image_b64}},
                 # {"type": "text", "text": "What does the image contain?"} # works
-                {"type": "text", "text": "Extract all data points from this chart and return them as structured JSON.Make sure to handle all rows. Empty columns might be used as separators. Extract exactly one y value per x value. Provide compact and complete output."}
+                {"type": "text", "text": "Extract all data points from this chart and return them as structured JSON.Make sure to handle all rows. Empty columns might be used as separators. Extract exactly one y value per x value per category. Provide compact and complete output."}
             ]
         }
     ],
