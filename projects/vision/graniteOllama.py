@@ -42,6 +42,7 @@ image_b64 = encode_image(image)
 
 payload = {
     "model": "granite3.2-vision:2b",
+    #"model": "llava-llama3:latest", #llava-phi3",
     "messages": [
         {
             "role": "user",
@@ -105,6 +106,12 @@ result = response.json()
 
 content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
 print("Response content:", content)
+if content.startswith("```json"):
+    content = content[7:-3]  # Remove the ```json and ``` markers
+elif content.startswith("```"):
+    content = content[3:-3]
+print("Cleaned content:", content)    
+
 try:
     parsed = json.loads(content)
     print("Parsed JSON:", json.dumps(parsed, indent=2))

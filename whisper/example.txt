@@ -1,0 +1,14 @@
+# with oneapi
+source /opt/oneapi/setvars.sh 
+export PATH=$PATH:/opt/llama/whisper/gpu/bin
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/llama/whisper/gpu/lib64
+# command.
+# works also with flac files
+whisper-cli -m ./models/ggml-medium.bin -l de -f ~/Downloads/text1.mp3 -np -nt
+# -nt supress timestamp
+# -np suppress print
+# with print should report gpu:
+#| 0| [level_zero:gpu:0]|                 Intel Iris Xe Graphics|   12.3|     96|     512|   32| 62390M|     1.5.30872.320000|
+
+whisper-cli -m models/ggml-base.bin -l auto -f ~/Downloads/text1.flac  -nt -np 
+whisper-cli -m models/ggml-base.bin -l auto -f ~/Downloads/text1.flac  -nt -np -otxt
