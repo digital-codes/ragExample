@@ -60,12 +60,15 @@ itemIds = [s.itemId for s in contentSnips]
 print(f"items: {len(itemIds)}")
 for i,snip in enumerate(contentSnips):
     try:
-        text = llm.summarize(snip.content,size=300)[0].strip()
         sum = next((s for s in summarySnips if s.itemId == snip.itemId), None)
         if not sum:
             print(f"no summary for {snip.itemId}")
             continue
+        if sum.content and len(sum.content) > 0:
+            print(f"already summarized {snip.itemId}")
+            continue
         print(f"itemId: {snip.itemId}, {sum.itemId}")
+        text = llm.summarize(snip.content,size=300)[0].strip()
         sum.content = text
         db.update(sql.Snippet,sum)
         print(f"updated {i}")
