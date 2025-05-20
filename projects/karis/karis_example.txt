@@ -1,0 +1,1 @@
+python graniteOllama.py karis2_tr.png "image contains short German text, typically JA, NEIN and ENTHALTUNG and asosciated numbers within 3 boxes or circles. extract text and number from all  3 elements. return json object with text:number. no additional comments"
