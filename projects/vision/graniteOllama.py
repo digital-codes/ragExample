@@ -2,11 +2,19 @@ import base64
 import requests
 import json
 import ast
+import sys 
 
 import io
 from PIL import Image, ImageOps
 import pandas as pd
 import matplotlib.pyplot as plt
+
+# granite vision works well with karis images, top right quadrant, with the following prompt:
+# image contains short German text, typically JA, NEIN and ENTHALTUNG and 
+# assosciated numbers within 3 boxes or circles. 
+# extract text and number from all  3 elements. return json object with text:number. 
+# no additional comments
+
 
 
 def encode_image(image: Image.Image, format: str = "png", max_size: int = 800) -> str:
@@ -35,13 +43,26 @@ def encode_image(image: Image.Image, format: str = "png", max_size: int = 800) -
 
 
 # Load and encode image
-input_filename = "chart.png"
+if len(sys.argv) > 1:
+    input_filename = sys.argv[1]
+else:
+    input_filename = "chart.png"
+    
 image = Image.open(input_filename)
 image_b64 = encode_image(image)
 
+if len(sys.argv) > 2:
+    prompt = sys.argv[2]
+else:
+    prompt = "Extract all data points from this chart and return them as structured JSON. Make sure to handle all rows. Empty columns might be used as separators. Extract exactly one y value per x value per category. Provide compact and complete output."
+
+if len(sys.argv) > 3:
+    model = sys.argv[3]
+else:
+    model = "granite3.2-vision:2b"
 
 payload = {
-    "model": "granite3.2-vision:2b",
+    "model": model, #"granite3.2-vision:2b",
     #"model": "llava-llama3:latest", #llava-phi3",
     "messages": [
         {
@@ -49,7 +70,7 @@ payload = {
             "content": [
                 {"type": "image_url", "image_url": {"url": image_b64}},
                 # {"type": "text", "text": "What does the image contain?"} # works
-                {"type": "text", "text": "Extract all data points from this chart and return them as structured JSON.Make sure to handle all rows. Empty columns might be used as separators. Extract exactly one y value per x value per category. Provide compact and complete output."}
+                {"type": "text", "text": prompt}
             ]
         }
     ],
