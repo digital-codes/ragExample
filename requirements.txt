@@ -54,7 +54,8 @@ google-auth==2.37.0
 googleapis-common-protos==1.66.0
 graphviz==0.20.3
 grpcio==1.67.1
-h11==0.16.0
+h11==0.14.0
+hdbscan==0.8.40
 httpcore==1.0.7
 httptools==0.6.4
 httpx==0.28.1
@@ -95,6 +96,7 @@ langgraph-sdk==0.1.66
 langsmith==0.3.39
 latex2mathml==3.77.0
 lazy_loader==0.4
+llvmlite==0.44.0
 lxml==5.3.0
 markdown-it-py==3.0.0
 marko==2.1.3
@@ -112,9 +114,11 @@ mpmath==1.3.0
 multidict==6.4.3
 multiprocess==0.70.18
 mypy_extensions==1.1.0
+narwhals==1.37.1
 networkx==3.4.2
 ninja==1.11.1.4
 nltk==3.9.1
+numba==0.61.2
 numpy==2.2.5
 nvidia-cublas-cu12==12.6.4.1
 nvidia-cuda-cupti-cu12==12.6.80
@@ -153,6 +157,7 @@ packaging==24.2
 pandas==2.2.3
 peft==0.14.0
 pillow==11.0.0
+plotly==6.0.1
 pluggy==1.5.0
 posthog==3.7.4
 pptree==3.1
@@ -170,6 +175,7 @@ Pygments==2.18.0
 pylatexenc==2.10
 pymilvus==2.5.0
 PyMySQL==1.1.1
+pynndescent==0.5.13
 pyparsing==3.2.0
 pypdfium2==4.30.1
 PyPika==0.48.9
@@ -202,7 +208,7 @@ segtok==1.5.11
 semchunk==2.2.2
 sentence-transformers==3.3.1
 sentencepiece==0.2.0
-setuptools==75.6.0
+setuptools==80.7.1
 shapely==2.1.0
 shellingham==1.5.4
 six==1.17.0
@@ -232,6 +238,7 @@ typing-inspection==0.4.0
 typing_extensions==4.12.2
 tzdata==2024.2
 ujson==5.10.0
+umap-learn==0.5.7
 unicode==2.9
 urllib3==2.2.3
 uvicorn==0.34.0
