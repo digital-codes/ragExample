@@ -8,4 +8,5 @@ else
     export LD_LIBRARY_PATH="/opt/llama/lib:$LD_LIBRARY_PATH"
     export PATH="/opt/llama/bin:$PATH"
 fi
-exec llama-server -m /opt/llama/models/bge-m3-Q4_K_M.gguf --embeddings --port 8085 --no-webui
+# physical batch size large enough! to prevent error 500
+exec llama-server -m /opt/llama/models/bge-m3-Q4_K_M.gguf -ub 4096 --embeddings --port 8085 --no-webui
