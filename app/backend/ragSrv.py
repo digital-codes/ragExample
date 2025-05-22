@@ -4,13 +4,28 @@ import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
-app = FastAPI()
 
 # Read tokens.json at startup
 with open("tokens.json", "r") as f:
     USERS = {u['username']: u['token'] for u in json.load(f)['users']}
     TOKENS = set(USERS.values())
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    print("Server is starting...")
+
+    try:
+        yield
+    finally:
+        # Shutdown logic (runs on Ctrl-C / SIGINT, SIGTERM, etc.)
+        print("Server is shutting down gracefully!")
+        # Place any cleanup code here (e.g., close files, db, etc.)
+
+app = FastAPI(lifespan=lifespan)
+
 
 @app.post("/api/token")
 async def get_token(request: Request):
@@ -85,8 +100,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
-
+    try:
+        uvicorn.run(app, host="0.0.0.0", port=5000)
+    except KeyboardInterrupt:
+        print("Server stopped with Ctrl-C.")
+    
 
 # 3. Frontend Tweaks
 
