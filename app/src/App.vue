@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
 import RagTest from './components/RagTest.vue'
 </script>
 
 <template>
   <RagTest />
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
 <style scoped>

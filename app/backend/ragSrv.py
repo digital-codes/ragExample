@@ -63,7 +63,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         url = "http://localhost:11434/api/chat"
                         headers = {"Content-Type": "application/json"}
                         payload = {
-                            "model": "llama3",  # Replace with your actual Ollama model
+                            "model": "granite3.3:2b",  # Replace with your actual Ollama model
                             "messages": [{"role": "user", "content": query}],
                             "stream": True
                         }
@@ -101,7 +101,7 @@ async def websocket_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     try:
-        uvicorn.run(app, host="0.0.0.0", port=5000)
+        uvicorn.run(app, host="0.0.0.0", port=5990)
     except KeyboardInterrupt:
         print("Server stopped with Ctrl-C.")
     

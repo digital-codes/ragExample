@@ -4,7 +4,7 @@ import json
 
 async def test_ws():
     token = "alice123"  # <-- replace with a valid token
-    uri = f"ws://localhost:5000/ws?token={token}"
+    uri = f"ws://localhost:5990/ws?token={token}"
     async with websockets.connect(uri) as websocket:
         # Send a test query
         query = "What is the capital of France?"

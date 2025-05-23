@@ -50,11 +50,11 @@ const wsConnected = ref(false);
 let ws = null;
 
 const API_BASE = import.meta.env.DEV
-  ? 'http://localhost:5000/api'
+  ? 'http://localhost:5990/api'
   : '/api';
 
 const WS_URL = import.meta.env.DEV
-  ? 'ws://localhost:5000/ws'
+  ? 'ws://localhost:5990/ws'
   : `wss://${window.location.host}/ws`;
 
 async function getToken() {
@@ -141,8 +141,28 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.llm-chat { max-width: 600px; margin: 0 auto; }
+.llm-chat { width:600px; max-width: 80%; margin: 0 auto; }
 .input { width: 180px; padding: 8px; margin: 4px 0; }
 .token-display { font-size: 0.85em; color: #357; margin-left: 1em; }
-.response { margin-top: 20px; min-height: 120px; background: #eee; padding: 12px; border-radius: 6px; }
+
+.response {
+  margin-top: 20px;
+  min-height: 120px;
+  max-height: 350px;
+  background: #eee;
+  padding: 12px;
+  border-radius: 6px;
+  text-align: left;
+  overflow-y: auto;
+  word-break: break-word;
+  white-space: pre-wrap;
+  width:100%;
+}
+
+.response pre {
+  white-space: pre-wrap !important;
+  word-break: break-all !important; /* ← this is the key! */
+  text-align: left;
+}
+
 </style>
