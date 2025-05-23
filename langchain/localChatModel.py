@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../rag'
 
 import ragDeployUtils as rag
 
-DEBUG = False
+DEBUG = True
 
 from langchain_core.callbacks import (
     CallbackManagerForLLMRun,
@@ -167,7 +167,7 @@ class ChatLocal(BaseChatModel):
             if DEBUG: print("Response from local model: ", response)
             
             self.streamId = response[0]
-            content = response[1]
+            content = response[1].decode('utf-8') if isinstance(response[1], bytes) else response[1]
             stop_detected = response[2]
             
             if stop_detected:
