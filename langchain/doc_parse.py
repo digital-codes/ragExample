@@ -70,8 +70,8 @@ with open(outraw, "w") as f:
 # simplified
 doc = {
     "metadata": {
-        "title": "Docling Technical Report[...]",
-        "source": "https://arxiv.org/pdf/2408.09869",
+        "title": "Some title... ",
+        "source": source,
     },
     "content": result.document.export_to_text(),
 }
