@@ -1,5 +1,9 @@
 import sys
 import os
+import re
+import json
+import argparse
+
 
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ["LANGSMITH_TRACING"] = "false"
@@ -7,18 +11,51 @@ os.environ["LANGSMITH_TRACING"] = "false"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../rag")))
 import private_remote as pr
 
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import SystemMessage, AIMessage, BaseMessage, ToolCall
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
-
 from langchain_core.tools import tool
 
 from typing import List, Optional
 
-PROVIDER = "ollama" # "openai"  # "ollama"   or "openai" "local" #
+# Add argument parsing for provider
+parser = argparse.ArgumentParser(description="Run the RAG example with a specified provider.")
+parser.add_argument(
+    "--provider","-p",
+    type=str,
+    choices=["ollama", "openai", "local", "deepinfra"],
+    default="ollama",
+    help="Specify the provider to use (default: ollama).",
+)
+parser.add_argument(
+    "--model","-m",
+    type=str,
+    default="granite3.3:2b",
+    help="Specify the model to use (default: granite3.3:2b).",
+)
+parser.add_argument(
+    "--debug","-d",
+    action="store_true",
+    help="Enable debug mode (default: False).",
+)
+parser.add_argument(
+    "--baseurl","-b",
+    type=str,
+    default="http://localhost:8085/",
+    help="Base URL for the model provider (default: http://localhost:8085/).",
+)
+args = parser.parse_args()
+PROVIDER = args.provider
 
-DEBUG = False
+#PROVIDER = "ollama" # "openai"  # "ollama"   or "openai" "local" #
+
+DEBUG = args.debug
+
+if "granite3" in args.model:
+    granitePatch = True
+else:
+    granitePatch = False
 
 # maybe check https://python.langchain.com/docs/how_to/qa_chat_history_how_to/
 
@@ -29,7 +66,7 @@ if PROVIDER == "deepinfra":
 
     # Setup DeepInfra LLM
     llm = ChatDeepInfra(
-        model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        model=args.model,
         deepinfra_api_token=pr.deepInfra["apiKey"],
     )
     llm_with_tools = None
@@ -37,13 +74,13 @@ elif PROVIDER == "local":
     import localChatModel as LC
 
     llm = LC.ChatLocal(
-        model="granite-3.3-2b-instruct-Q4_K_M"
+        model=args.model
     )  # parrot_buffer_length=3, model="my_custom_model")
     print("Using local model", llm)
     llm_with_tools = None
 elif PROVIDER == "ollama":
     from langchain.chat_models import init_chat_model
-    from langchain_community.chat_models import ChatLlamaCpp
+    # from langchain_community.chat_models import ChatLlamaCpp
 
     # https://python.langchain.com/api_reference/langchain/chat_models/langchain.chat_models.base.init_chat_model.html
     # chat providers limited. openAi work. deepinfra not supported here. huggingface complicated or not working
@@ -53,17 +90,12 @@ elif PROVIDER == "ollama":
     # <|tool_call|>[{"arguments": {"query": "main feature of docling"}}]
     # appears in output
     # llama3.2  works normally
-    models = [
-        "granite3.3:2b",
-        "granite3.3:8b",
-        "granite3.1-moe:3b",
-        "llama3.2:latest"
-    ]  # on pycontabo. small deeepseek and phi don't support tools
+    # on pycontabo. small deeepseek and phi don't support tools
     os.environ["OPENAI_API_KEY"] = "ollama"
     llm = init_chat_model(
-        models[3],
+        args.model,
         model_provider="ollama",
-        base_url="http://localhost:8085/",
+        base_url=args.baseurl,
         temperature=0.1,
         max_tokens=10000,
     )
@@ -98,8 +130,33 @@ def retrieve(query: str):
         (f"Source: {doc.metadata}\n" f"Content: {doc.page_content}")
         for doc in retrieved_docs
     )
+    if DEBUG:
+        print(f"Search returned {len(retrieved_docs)} results")
     return serialized, retrieved_docs
 
+# granite format patch
+def patch_granite_tool_output(msg: BaseMessage) -> BaseMessage:
+    """Convert <|tool_call|> response to proper tool call structure for LangChain."""
+    if isinstance(msg, AIMessage) and isinstance(msg.content, str):
+        match = re.search(r"<\|tool_call\|>(\[.*?\])", msg.content)
+        if match:
+            try:
+                raw_tool_calls = json.loads(match.group(1))
+                tool_calls = [
+                    ToolCall(
+                        name="retrieve",  # <-- use your actual tool name
+                        args=tc["arguments"],
+                        id=f"granite-tool-call-{i}"
+                    )
+                    for i, tc in enumerate(raw_tool_calls)
+                ]
+                if len(tool_calls) == 0:
+                    return ""
+                #return AIMessage(content="Calling tool...", tool_calls=tool_calls)
+                return AIMessage(content="", tool_calls=tool_calls)
+            except Exception as e:
+                print("Failed to parse tool call:", e)
+    return msg
 
 # Step 1: Generate an AIMessage that may include a tool-call to be sent.
 def query_or_respond(state: MessagesState):
@@ -107,6 +164,10 @@ def query_or_respond(state: MessagesState):
     try:
         llm_with_tools = llm.bind_tools([retrieve])
         response = llm_with_tools.invoke(state["messages"])
+        if granitePatch:
+            if DEBUG:
+                print("Patching Granite tool output")
+            response = patch_granite_tool_output(response)
     except Exception as e:
         print(f"Error invoking LLM: {e}")
         # Handle the error gracefully
@@ -200,11 +261,13 @@ for step in graph.stream(
 ):
     if DEBUG:
         step["messages"][-1].pretty_print()
+    if "tool" in step["messages"][-1].type:
+        print("Tool call detected:", step["messages"][-1].tool_calls)
     if step["messages"][-1].type == "ai":  # and not message.tool_calls:
         print("AI:",step["messages"][-1].content)
 ######
 
-input_message = "What is main feature of docling?"
+input_message = "What is main feature of ibm docling Document Conversion?"
 
 for step in graph.stream(
     {"messages": [{"role": "user", "content": input_message}]},
@@ -213,6 +276,16 @@ for step in graph.stream(
 ):
     if DEBUG:
         step["messages"][-1].pretty_print()
+    if "tool" in step["messages"][-1].type:
+        if granitePatch:
+            last_message = step["messages"][-1]
+            if isinstance(last_message, AIMessage):
+                print("Tool call detected:", last_message.tool_calls)
+            elif hasattr(last_message, "tool_call_id"):
+                print("Tool returned result for call ID:", last_message.tool_call_id)
+                print("Tool result content:", last_message.content)
+        else:
+            print("Tool call detected:", step["messages"][-1].tool_calls)
     if step["messages"][-1].type == "ai":  # and not message.tool_calls:
         print("AI:",step["messages"][-1].content)
 
