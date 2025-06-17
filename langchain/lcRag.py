@@ -276,17 +276,14 @@ for step in graph.stream(
 ):
     if DEBUG:
         step["messages"][-1].pretty_print()
-    if "tool" in step["messages"][-1].type:
-        if granitePatch:
-            last_message = step["messages"][-1]
-            if isinstance(last_message, AIMessage):
-                print("Tool call detected:", last_message.tool_calls)
-            elif hasattr(last_message, "tool_call_id"):
-                print("Tool returned result for call ID:", last_message.tool_call_id)
-                print("Tool result content:", last_message.content)
-        else:
-            print("Tool call detected:", step["messages"][-1].tool_calls)
-    if step["messages"][-1].type == "ai":  # and not message.tool_calls:
+    last_message = step["messages"][-1]
+    if "tool" in last_message.type:
+        if isinstance(last_message, AIMessage):
+            print("Tool call detected:", last_message.tool_calls)
+        elif hasattr(last_message, "tool_call_id"):
+            print("Tool returned result for call ID:", last_message.tool_call_id)
+            print("Tool result content:", last_message.content)
+    if last_message.type == "ai":  # and not message.tool_calls:
         print("AI:",step["messages"][-1].content)
 
 
