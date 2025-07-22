@@ -219,7 +219,7 @@ soupsieve==2.6
 SQLAlchemy==2.0.41
 sqlitedict==2.1.0
 stanza==1.10.1
-starlette==0.41.3
+starlette==0.47.2
 sympy==1.14.0
 tabulate==0.9.0
 tenacity==9.0.0
