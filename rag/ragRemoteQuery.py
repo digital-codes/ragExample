@@ -131,7 +131,7 @@ def shutdown_supervisord():
 ############################
 
 
-DEBUG = False
+DEBUG = True # False
 
 
 config = {
@@ -329,8 +329,8 @@ def retrieve_context(query):
         csearchResult = csearchResult["data"] if csearchResult != None else []
         if DEBUG: print(tsearchResult,csearchResult)
         # limit by threshold
-        tsearchResult = [r for r in tsearchResult if r["similarity"] >= config["threshold"]]
-        csearchResult = [r for r in csearchResult if r["similarity"] >= config["threshold"]]
+        tsearchResult = [r for r in tsearchResult if float(r["similarity"]) >= config["threshold"]]
+        csearchResult = [r for r in csearchResult if float(r["similarity"]) >= config["threshold"]]
         if DEBUG: print("Thresholded:",tsearchResult,csearchResult)
         # !! id in search results is vector INDEX !!
         # wrong. csearch returns chunk indices, tsearch returns title indices
@@ -509,7 +509,7 @@ if __name__ == "__main__":
     config["stream"] = args.stream
     config["think"] = args.think
     config["brief"] = args.brief
-    config["threshold"] = args.threshold
+    config["threshold"] = float(args.threshold)
     config["llmUrl"] = args.llmUrl
     config["llmPort"] = args.llmPort
     if DEBUG: print(config)
