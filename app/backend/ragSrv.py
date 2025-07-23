@@ -7,6 +7,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 
+import sys 
+if len(sys.argv) > 1 and sys.argv[1] == "llamacpp":
+    apiurl = "http://localhost:11434/v1/chat/completions"
+else:
+    apiurl = "http://localhost:11434/api/chat"
+
+print(f"Using API URL: {apiurl}")
+
 # Read tokens.json at startup
 with open("tokens.json", "r") as f:
     USERS = {u['username']: u['token'] for u in json.load(f)['users']}
@@ -60,7 +68,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 query = msg["data"]
                 try:
                     async with httpx.AsyncClient() as client:
-                        url = "http://localhost:11434/api/chat"
+                        url = apiurl # "http://localhost:11434/api/chat"
                         headers = {"Content-Type": "application/json"}
                         payload = {
                             "model": "granite3.3:2b",  # Replace with your actual Ollama model
@@ -75,6 +83,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                             delta = json.loads(chunk)
                                             content = delta.get("message", {}).get("content")
                                             if content:
+                                                print(f"Streaming content: {content}")
                                                 await websocket.send_text(json.dumps({"type": "llm_stream", "data": content}))
                                         except Exception:
                                             continue
