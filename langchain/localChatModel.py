@@ -1,4 +1,5 @@
 # https://python.langchain.com/docs/how_to/custom_chat_model/
+import time
 from typing import Any, Dict, Iterator, List, Optional
 
 import sys
@@ -167,6 +168,7 @@ class ChatLocal(BaseChatModel):
             if DEBUG: print("Response from local model: ", response)
             
             self.streamId = response[0]
+
             content = response[1].decode('utf-8') if isinstance(response[1], bytes) else response[1]
             stop_detected = response[2]
             
