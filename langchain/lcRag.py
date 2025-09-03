@@ -8,7 +8,10 @@ import argparse
 os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ["LANGSMITH_TRACING"] = "false"
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../rag")))
+try:
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../rag")))
+except NameError:
+    sys.path.append(os.path.abspath(os.path.join("../rag")))
 import private_remote as pr
 
 from langchain_core.messages import SystemMessage, AIMessage, BaseMessage, ToolCall
