@@ -74,7 +74,7 @@ idna==3.10
 imageio==2.37.0
 importlib_metadata==8.5.0
 importlib_resources==6.4.5
-intel_extension_for_pytorch==2.5.0
+intel_extension_for_pytorch==2.8.0
 intervaltree==3.1.0
 Jinja2==3.1.6
 jiter==0.10.0
