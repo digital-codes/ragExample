@@ -15,4 +15,6 @@ if [ -z "$RAG_LLM_MODEL" ]; then
 fi
 
 port=${RAG_LLM_PORT:-8080}
-exec llama-server --jinja -m "$RAG_LLM_MODEL" --port "$port" -c 20000 --no-webui
+exec llama-server --jinja -m "$RAG_LLM_MODEL" --port "$port" -c 40000 --no-webui
+
+

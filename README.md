@@ -58,6 +58,9 @@ Documents are indexed using embeddings. Make sure to store text content and usef
 
 ### LLMs
 
+**Don't use llamacpp with option -c 0 --jinja for textgen models ** Use like -c 40000
+
+
 **Latest**
 Llama3.3-70B on deepinfra or huggingface for complex tasks, 128k token length
 

@@ -483,7 +483,7 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--items', default = 5)      # option that takes a value
     parser.add_argument('-l', '--lang',default = "de")      # option that takes a value
     parser.add_argument('-d', '--dbProvider',default = "localsearch")      # option that takes a value
-    parser.add_argument('-c', '--collection',default = "ksk")      # option that takes a value
+    parser.add_argument('-c', '--collection',default = "ksk_1024")      # option that takes a value
     parser.add_argument('-P', '--embProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-p', '--llmProvider',default = "deepinfra")      # option that takes a value
     parser.add_argument('-m', '--llmModel',default = None)      # option that takes a value
@@ -543,7 +543,7 @@ if __name__ == "__main__":
     if config["llmProvider"] == "localllama":
         supervised.append("llm")
         if args.llmModel == None:
-            args.llmModel = "granite-3.3-2b-instruct" # default
+            args.llmModel = "ibm-granite.granite-4.0-h-1b.Q4_K_M" # "granite-3.3-2b-instruct" # default
         model_files = [f for f in os.listdir('/opt/llama/models') if f.startswith(args.llmModel)]
         if not model_files:
             raise FileNotFoundError(f"No model file starting with {config['llmModel']} found in /opt/llama/models")

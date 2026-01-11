@@ -31,7 +31,7 @@ done
 
 # Run main application
 echo "Starting main RAG program..."
-python rag/ragRemoteQuery.py -d localsearch -c ksk_1024 -P localllama -p localllama -s projects/ksk.db -b
+python rag/ragRemoteQuery.py -m ibm-granite.granite-4.0-h-1b.Q4_K_M -d localsearch -c ksk_1024 -P localllama -p localllama -s projects/ksk.db -b
 
 # On exit, shut down supervisord
 echo "Main program exited. Shutting down companion services..."

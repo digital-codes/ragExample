@@ -72,7 +72,7 @@ localllama = {
     "embSize":1024,
     "embToks": 8192,
     "lngUrl":"http://localhost:8080/v1/chat/completions",
-    "lngMdl": "Llama-3.2-3B-Instruct-Q4_K_M",
+    "lngMdl": "ibm-granite.granite-4.0-h-1b.Q4_K_M",
     "lngMdl_1" : "LLaMmlein_1B_chat_selected"
 }
 
