@@ -49,7 +49,7 @@ Faker==37.6.0
 fastapi==0.128.0
 fastify==1.5.3
 fasttext==0.9.3
-filelock==3.16.1
+filelock==3.20.3
 filetype==1.2.0
 flair==0.15.1
 flatbuffers==24.3.25
