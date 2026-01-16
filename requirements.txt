@@ -185,7 +185,7 @@ preshed==3.0.9
 propcache==0.3.1
 protobuf==5.29.5
 psutil==6.1.1
-pyasn1==0.6.1
+pyasn1==0.6.2
 pyasn1_modules==0.4.1
 pybase64==1.4.2
 pybind11==3.0.0
