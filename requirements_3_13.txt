@@ -71,7 +71,7 @@ httpcore==1.0.9
 httptools==0.6.4
 httpx==0.27.2
 httpx-sse==0.4.0
-huggingface_hub==1.4.0
+huggingface_hub==1.4.1
 humanfriendly==10.0
 idle==1.0.4
 idna==3.10
@@ -95,7 +95,7 @@ kubernetes==31.0.0
 langchain==1.2.8
 langchain-classic==1.0.1
 langchain-community==0.4.1
-langchain-core==0.3.83
+langchain-core==1.2.9
 langchain-deepinfra==0.1.0
 langchain-huggingface==1.2.0
 langchain-ollama==1.0.1
@@ -256,12 +256,12 @@ thinc==8.3.6
 threadpoolctl==3.5.0
 tifffile==2025.3.30
 tiktoken==0.11.0
-tokenizers==0.21.4
+tokenizers==0.22.2
 torch==2.8.0
 torchvision==0.23.0
 tqdm==4.67.1
 transformer-smaller-training-vocab==0.4.2
-transformers==4.55.2
+transformers==5.1.0
 tree-sitter==0.25.2
 tree-sitter-c==0.24.1
 tree-sitter-java==0.23.5
