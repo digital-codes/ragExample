@@ -543,7 +543,7 @@ if __name__ == "__main__":
     if config["llmProvider"] == "localllama":
         supervised.append("llm")
         if args.llmModel == None:
-            args.llmModel = "ibm-granite.granite-4.0-h-1b.Q4_K_M" # "granite-3.3-2b-instruct" # default
+            args.llmModel = "ibm-granite.granite-4.0-h-1b.Q4_K_M.gguf" # "granite-3.3-2b-instruct" # default
         model_files = [f for f in os.listdir('/opt/llama/models') if f.startswith(args.llmModel)]
         if not model_files:
             raise FileNotFoundError(f"No model file starting with {config['llmModel']} found in /opt/llama/models")
