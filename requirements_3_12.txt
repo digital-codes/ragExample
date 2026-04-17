@@ -100,7 +100,7 @@ langchain-deepinfra==0.1.0
 langchain-huggingface==1.2.0
 langchain-ollama==1.0.1
 langchain-openai==0.3.35
-langchain-text-splitters==1.1.0
+langchain-text-splitters==1.1.2
 langcodes==3.5.0
 langdetect==1.0.9
 langgraph==1.0.10rc1
