@@ -748,7 +748,7 @@ def fetch_all(endpoint: str = API_ENDPOINT) -> Dict[str, List[Dict[str, Any]]]:
             print(
                 f"  → {len(data[name])} records retrieved.", file=sys.stderr
             )
-        except Exception as exc:  # pylint: disable=broad-except
+        except (requests.RequestException, ValueError, RuntimeError, KeyError) as exc:
             print(f"  [WARNING] Could not fetch {name}: {exc}", file=sys.stderr)
             data[name] = []
     return data
