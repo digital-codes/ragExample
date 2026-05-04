@@ -55,6 +55,14 @@ class Embedder:
             self.toks = cfg.huggingface["embToks"]
             self.engine = None
             print("Warning: Huggingface embeddings are non-standard.")
+        elif provider == "ionos":
+            self.api_key = pr.ionos["apiKey"]
+            self.model = cfg.ionos["embMdl"]
+            self.url = cfg.ionos["embUrl"]
+            self.size = cfg.ionos["embSize"]
+            self.toks = cfg.ionos["embToks"]
+            self.engine = None
+            print("Warning: Ionos embeddings are non-standard.")
         elif provider == "openai":
             self.api_key = pr.openAi["apiKey"]
             self.model = cfg.openAi["embMdl"]
@@ -131,6 +139,9 @@ class Embedder:
             }
             if self.provider == "huggingface":
                 data = {"inputs": input}
+            elif self.provider == "ionos":
+                if DEBUG: print("Ionos url, input, model:",self.url,input, self.model)
+                data = {"model": self.model, "input": input}
             else:           
                 data = {"model": self.model, "input": input, "encoding_format": "float"}
             if self.provider == "openai":
@@ -223,6 +234,10 @@ class Llm:
             self.api_key = pr.openAi["apiKey"]
             self.model = cfg.openAi["lngMdl"] if model == None else model
             self.url = cfg.openAi["lngUrl"]
+        elif provider == "ionos":
+            self.api_key = pr.ionos["apiKey"]
+            self.model = cfg.ionos["lngMdl"] if model == None else model
+            self.url = cfg.ionos["lngUrl"]
         elif provider == "localllama":
             self.api_key = pr.localllama["apiKey"]
             self.model = cfg.localllama["lngMdl"] if model == None else model

@@ -5,6 +5,19 @@ zilliz = {
 }
 
 # deep infra
+ionos = {
+    "embUrl":"https://openai.inference.de-txl.ionos.com/v1/embeddings",
+    "lngUrl":"https://openai.inference.de-txl.ionos.com/v1/chat/completions",
+    "embMdl": "BAAI/bge-m3",
+    "embToks": 8192,
+    "embSize":1024,
+    "lngMdl": "mistralai/Mistral-Small-24B-Instruct",
+    "lngToks": 128*1024,
+    "lngMdl_1": "mistralai/Mistral-Nemo-Instruct-2407",
+    "lngMdl_2": "openai/gpt-oss-120b"
+}
+
+# deep infra
 deepInfra = {
     "embUrl":"https://api.deepinfra.com/v1/openai/embeddings",
     "lngUrl":"https://api.deepinfra.com/v1/openai/chat/completions",

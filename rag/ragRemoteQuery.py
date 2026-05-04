@@ -314,6 +314,7 @@ def retrieve_context(query):
         str: The context string for the query.
     """
     embedding = config["embedder"].encode(query)
+    if DEBUG: print("Embedding:",embedding)
     searchVector = embedding["data"][0]["embedding"]
     if DEBUG: print("search vector:",searchVector)
     if config["dbProvider"] == "zilliz":
