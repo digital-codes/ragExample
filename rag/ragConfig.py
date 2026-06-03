@@ -1,4 +1,7 @@
 # zilliz database
+import struct
+
+
 zilliz = {
     "region": "gcp-us-west1",
     "cluster": "in03-eb450554ac4fcc5"
@@ -30,6 +33,16 @@ deepInfra = {
     "lngMdl_1": "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
     "lngMdl_2": "deepseek-ai/DeepSeek-R1-Turbo",
     "lngMdl_3": "microsoft/Phi-4-multimodal-instruct",
+}
+
+together = {
+    "embUrl":"https://api.together.xyz/v1/embeddings",
+    "lngUrl":"https://api.together.xyz/v1/chat/completions",
+    "embMdl": "intfloat/multilingual-e5-large-instruct",    
+    "embToks": 512,
+    "embSize":1024,
+    "lngMdl": "Qwen/Qwen3.5-9B",
+    "lngToks": 256*1024
 }
 
 # openai
@@ -85,7 +98,8 @@ localllama = {
     "embSize":1024,
     "embToks": 8192,
     "lngUrl":"http://localhost:8080/v1/chat/completions",
-    "lngMdl": "ibm-granite.granite-4.0-h-1b.Q4_K_M",
+    "lngMdl" : "granite-4.1-3b-Q8_0.gguf",
+    "lngMdl_0": "ibm-granite.granite-4.0-h-1b.Q4_K_M",
     "lngMdl_1" : "LLaMmlein_1B_chat_selected"
 }
 
