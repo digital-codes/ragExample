@@ -228,7 +228,7 @@ pydantic==2.11.7
 pydantic-settings==2.14.2
 pydantic_core==2.33.2
 Pygments==2.18.0
-PyJWT==2.12.1
+PyJWT==2.13.0
 pylatexenc==2.10
 pymilvus==2.6.0
 PyMySQL==1.1.1
