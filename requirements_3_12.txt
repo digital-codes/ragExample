@@ -105,7 +105,7 @@ Jinja2==3.1.6
 jiter==0.10.0
 jmespath==1.0.1
 joblib==1.4.2
-joserfc==1.6.4
+joserfc==1.6.8
 jsonlines==3.1.0
 jsonpatch==1.33
 jsonpointer==3.0.0
