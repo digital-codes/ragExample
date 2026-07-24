@@ -318,7 +318,7 @@ ujson==5.10.0
 umap-learn==0.5.7
 uncalled-for==0.3.1
 unicode==2.9
-urllib3==2.6.3
+urllib3==2.7.0
 uuid_utils==0.14.0
 uvicorn==0.45.0
 uvloop==0.21.0
