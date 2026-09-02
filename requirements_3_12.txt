@@ -300,7 +300,7 @@ tokenizers==0.22.2
 torch==2.13.0
 torchvision==0.23.0
 tqdm==4.67.1
-transformers==5.5.0
+transformers==5.10.1
 tree-sitter==0.25.2
 tree-sitter-c==0.24.1
 tree-sitter-java==0.23.5
