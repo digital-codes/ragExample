@@ -45,7 +45,7 @@ dill==0.4.0
 distro==1.9.0
 dnspython==2.8.0
 doclang==0.7.2
-docling==2.112.0
+docling==2.132.0
 docling-core==2.86.0
 docling-ibm-models==3.13.3
 docling-parse==7.8.0
