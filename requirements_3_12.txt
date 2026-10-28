@@ -63,7 +63,7 @@ faiss-cpu==1.13.2
 Faker==37.6.0
 fastapi==0.128.2
 fastify==1.5.3
-fastmcp==3.2.4
+fastmcp==3.4.10
 fasttext==0.9.3
 filelock==3.20.3
 filetype==1.2.0
