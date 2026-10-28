@@ -43,7 +43,7 @@ defusedxml==0.7.1
 Deprecated==1.2.15
 dill==0.4.0
 distro==1.9.0
-dnspython==2.8.0
+dnspython==2.9.0
 doclang==0.7.2
 docling==2.132.0
 docling-core==2.86.0
